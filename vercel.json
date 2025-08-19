@@ -1,4 +1,4 @@
 {
-  "buildCommand": "cd scavenjersite && npm install && npm run vercel-build",
-  "outputDirectory": "scavenjersite/dist"
+  "buildCommand": "cd Neomarket && npm install && npm run vercel-build",
+  "outputDirectory": "Neomarket/dist"
 } 

@@ -1,0 +1,4 @@
+{
+  "buildCommand": "cd scavenjersite && npm install && npm run vercel-build",
+  "outputDirectory": "scavenjersite/dist"
+} 

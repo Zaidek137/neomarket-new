@@ -1,4 +1,10 @@
 {
   "buildCommand": "cd Neomarket && npm install && npm run vercel-build",
-  "outputDirectory": "Neomarket/dist"
+  "outputDirectory": "Neomarket/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 } 

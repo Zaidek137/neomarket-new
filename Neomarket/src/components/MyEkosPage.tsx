@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { User, Plus, ShoppingCart, Eye, ExternalLink, Wallet } from 'lucide-react';
-import { useActiveAccount } from 'thirdweb/react';
-import { createThirdwebClient } from 'thirdweb';
+import { useActiveAccount, useSendTransaction } from 'thirdweb/react';
+import { getContract, prepareContractCall, toWei } from 'thirdweb';
+import { getOwnedNFTs } from 'thirdweb/extensions/erc721';
 import { polygon } from 'thirdweb/chains';
-import { NFT_COLLECTION_ADDRESS } from '../config/constants';
-
-const client = createThirdwebClient({
-  clientId: "dc56b7276133338ec60eebc93d1c38b1"
-});
+import { useNavigate } from 'react-router-dom';
+import { client } from '../client';
+import { NFT_COLLECTION_ADDRESS, CONTRACT_ADDRESS, NATIVE_TOKEN_ADDRESS } from '../config/constants';
+import { useCryptoPrice } from '../hooks/useCryptoPrice';
 
 interface OwnedEko {
   tokenId: string;
@@ -22,11 +22,15 @@ interface OwnedEko {
 
 export default function MyEkosPage() {
   const account = useActiveAccount();
+  const navigate = useNavigate();
+  const { mutate: sendTransaction } = useSendTransaction();
+  const { polPrice } = useCryptoPrice();
   const [ownedEkos, setOwnedEkos] = useState<OwnedEko[]>([]);
   const [loading, setLoading] = useState(false);
   const [showListModal, setShowListModal] = useState(false);
   const [selectedEko, setSelectedEko] = useState<OwnedEko | null>(null);
   const [listingPrice, setListingPrice] = useState('');
+  const [isListing, setIsListing] = useState(false);
 
   // Fetch user's owned Ekos
   useEffect(() => {
@@ -44,12 +48,31 @@ export default function MyEkosPage() {
     try {
       console.log('Fetching owned NFTs for:', account.address);
       
-      // For now, simulate API call and show no NFTs found
-      // This will be replaced with real Thirdweb integration once we resolve the import issues
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setOwnedEkos([]);
-      console.log('No NFTs found for this wallet');
+      // Get the NFT contract
+      const nftContract = getContract({
+        client,
+        chain: polygon,
+        address: NFT_COLLECTION_ADDRESS
+      });
+
+      // Fetch owned NFTs
+      const ownedNFTs = await getOwnedNFTs({
+        contract: nftContract,
+        owner: account.address
+      });
+
+      console.log('Found NFTs:', ownedNFTs.length);
+
+      // Transform NFT data to our format
+      const formattedEkos = ownedNFTs.map((nft) => ({
+        tokenId: nft.id.toString(),
+        name: nft.metadata?.name || `Eko #${nft.id}`,
+        image: nft.metadata?.image || '',
+        description: nft.metadata?.description || '',
+        attributes: (nft.metadata?.attributes as any[]) || []
+      }));
+
+      setOwnedEkos(formattedEkos);
       
     } catch (error) {
       console.error('Error fetching owned Ekos:', error);
@@ -62,6 +85,58 @@ export default function MyEkosPage() {
   const handleListEko = (eko: OwnedEko) => {
     setSelectedEko(eko);
     setShowListModal(true);
+  };
+
+  const handleSubmitListing = async () => {
+    if (!selectedEko || !listingPrice || !account) return;
+
+    setIsListing(true);
+    try {
+      const marketplaceContract = getContract({
+        client,
+        chain: polygon,
+        address: CONTRACT_ADDRESS
+      });
+
+      // Prepare the listing transaction
+      const transaction = prepareContractCall({
+        contract: marketplaceContract,
+        method: "function createListing((address assetContract, uint256 tokenId, uint256 quantity, address currency, uint256 pricePerToken, uint128 startTimestamp, uint128 endTimestamp, bool reserved) _params)",
+        params: [{
+          assetContract: NFT_COLLECTION_ADDRESS,
+          tokenId: BigInt(selectedEko.tokenId),
+          quantity: 1n,
+          currency: NATIVE_TOKEN_ADDRESS,
+          pricePerToken: toWei(listingPrice),
+          startTimestamp: BigInt(Math.floor(Date.now() / 1000)),
+          endTimestamp: BigInt(Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60), // 1 year
+          reserved: false
+        }]
+      });
+
+      // Send the transaction
+      sendTransaction(transaction, {
+        onSuccess: () => {
+          console.log('Listing created successfully!');
+          setShowListModal(false);
+          setListingPrice('');
+          setSelectedEko(null);
+          // Optionally refresh the owned NFTs
+          fetchOwnedEkos();
+          // Navigate to exchange
+          navigate('/exchange');
+        },
+        onError: (error) => {
+          console.error('Error creating listing:', error);
+          alert('Failed to create listing. Please try again.');
+        }
+      });
+    } catch (error) {
+      console.error('Error preparing listing:', error);
+      alert('Failed to prepare listing. Please try again.');
+    } finally {
+      setIsListing(false);
+    }
   };
 
   const ListEkoModal = () => {
@@ -122,20 +197,45 @@ export default function MyEkosPage() {
               </p>
             </div>
 
+            {/* Price Display in USD */}
+            {listingPrice && parseFloat(listingPrice) > 0 && polPrice && (
+              <div className="bg-slate-700/30 rounded-lg p-3 border border-slate-600/30">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400">Estimated USD Value</span>
+                  <span className="font-medium text-white">
+                    ${(parseFloat(listingPrice) * polPrice).toFixed(2)} USD
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Action Buttons */}
             <div className="flex gap-3 pt-4">
               <button
-                onClick={() => setShowListModal(false)}
+                onClick={() => {
+                  setShowListModal(false);
+                  setListingPrice('');
+                }}
                 className="flex-1 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors border border-slate-600"
               >
                 Cancel
               </button>
               <button
-                disabled={!listingPrice || parseFloat(listingPrice) <= 0}
+                onClick={handleSubmitListing}
+                disabled={!listingPrice || parseFloat(listingPrice) <= 0 || isListing}
                 className="flex-1 px-4 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 disabled:from-slate-600 disabled:to-slate-700 text-white rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2"
               >
-                <ShoppingCart size={16} />
-                List for Sale
+                {isListing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Listing...
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart size={16} />
+                    List for Sale
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -221,7 +321,7 @@ export default function MyEkosPage() {
         
         {account && ownedEkos.length > 0 && (
           <button
-            onClick={() => window.open('/exchange', '_blank')}
+            onClick={() => navigate('/exchange')}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white rounded-lg font-medium transition-all duration-200"
           >
             <ExternalLink size={16} />
@@ -309,7 +409,7 @@ export default function MyEkosPage() {
                 You don't own any Ekos yet. Purchase one from our collection to get started!
               </p>
               <button
-                onClick={() => window.open('/collection/scavenjers', '_blank')}
+                onClick={() => navigate('/collection/scavenjers')}
                 className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white rounded-lg font-medium transition-all duration-200 flex items-center gap-2 mx-auto"
               >
                 <ShoppingCart size={16} />

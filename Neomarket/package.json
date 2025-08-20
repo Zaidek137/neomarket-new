@@ -6,26 +6,13 @@
   "engines": {
     "node": ">=18.18.0"
   },
-  "overrides": {
-    "pbkdf2": "^3.1.4",
-    "form-data": "^4.0.4",
-    "react-native": false,
-    "@react-native/virtualized-lists": false,
-    "react-native-quick-base64": false
-  },
-  "resolutions": {
-    "pbkdf2": "^3.1.4",
-    "form-data": "^4.0.4",
-    "react-native": false,
-    "@react-native/virtualized-lists": false,
-    "react-native-quick-base64": false
-  },
+
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "preinstall": "npx npm-force-resolutions",
+
     "vercel-build": "npm run build"
   },
   "dependencies": {

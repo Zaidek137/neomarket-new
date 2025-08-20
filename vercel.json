@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd Neomarket && npm install && npm run vercel-build",
+  "buildCommand": "cd Neomarket && npm install --legacy-peer-deps && npm run vercel-build",
   "outputDirectory": "Neomarket/dist",
   "rewrites": [
     {

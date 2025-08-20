@@ -14,6 +14,7 @@ export const NFT_COLLECTION_ADDRESS = "0x45a5A7F0c407F8178B138C74906bed90414fC92
 // Currency Addresses on Polygon Mainnet
 export const WMATIC_ADDRESS = NATIVE_TOKEN_ADDRESS;
 export const USDC_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174";
+export { NATIVE_TOKEN_ADDRESS };
 
 // Chain configuration
 export const CHAIN_ID = 137;

@@ -1,6 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { X, CreditCard, Shield, Zap, CheckCircle, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React from 'react';
+import { motion } from 'framer-motion';
+import { X } from 'lucide-react';
+import { useActiveAccount, ConnectButton } from 'thirdweb/react';
+import { CrossmintProvider, CrossmintHostedCheckout } from "@crossmint/client-sdk-react-ui";
+import { createThirdwebClient } from 'thirdweb';
+
+const client = createThirdwebClient({
+  clientId: "dc56b7276133338ec60eebc93d1c38b1"
+});
+
+const clientApiKey = "ck_production_5pLaG5zFyQ6nW2RuHYgapoJKcG4eV8ac5wHvki3bzyBA4MjBRxFybM2zCcQzyH1LttngQDgdDzTK8d47iwfxYrdSpAEwz9cpnrWuR9FwYxApVg9YMPXgPrTkNv4JWY6BgVtNNRmuM25Rm6R1i4KPL8dkbrv3UGLkpYgx83hp6eLRKw4oSmKfEN7z8tKcbX8k91HKcvpZCBDGcHn7kXpUfDCf";
+const COLLECTION_ID = 'bf55192e-339c-40a2-a705-c7456b2f3c71';
 
 interface CrossmintCheckoutModalProps {
   isOpen: boolean;
@@ -9,242 +19,121 @@ interface CrossmintCheckoutModalProps {
   price: number;
 }
 
-type CheckoutStep = 'payment' | 'processing' | 'success' | 'error';
-
-export default function CrossmintCheckoutModal({ 
-  isOpen, 
-  onClose, 
-  collectionTitle, 
-  price 
-}: CrossmintCheckoutModalProps) {
-  const [step, setStep] = useState<CheckoutStep>('payment');
-  const [email, setEmail] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Reset state when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setStep('payment');
-      setEmail('');
-      setIsLoading(false);
-    }
-  }, [isOpen]);
-
-  const handlePurchase = async () => {
-    if (!email) return;
-    
-    setIsLoading(true);
-    setStep('processing');
-    
-    try {
-      // Simulate Crossmint API call
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // For demo purposes, we'll show success
-      // In a real implementation, you would integrate with Crossmint SDK
-      setStep('success');
-    } catch (error) {
-      setStep('error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const renderPaymentStep = () => (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="text-center space-y-2">
-        <h3 className="text-2xl font-bold text-white">Purchase Random Eko</h3>
-        <p className="text-slate-400">From {collectionTitle}</p>
-        <div className="text-3xl font-bold text-cyan-400">${price} USD</div>
-      </div>
-
-      {/* Features */}
-      <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-600/50">
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <Shield className="text-green-500" size={20} />
-            <span className="text-white">Secure payment powered by Crossmint</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <CreditCard className="text-blue-500" size={20} />
-            <span className="text-white">Pay with credit card or crypto</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <Zap className="text-yellow-500" size={20} />
-            <span className="text-white">Instant delivery to your wallet</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Email Input */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-white">
-          Email Address
-        </label>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="Enter your email address"
-          className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
-        />
-        <p className="text-xs text-slate-400">
-          We'll send your NFT details and receipt to this email
-        </p>
-      </div>
-
-      {/* Purchase Button */}
-      <button
-        onClick={handlePurchase}
-        disabled={!email || isLoading}
-        className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 disabled:from-slate-600 disabled:to-slate-700 text-white py-4 rounded-lg font-medium text-lg transition-all duration-200 flex items-center justify-center gap-2"
-      >
-        <CreditCard size={20} />
-        {isLoading ? 'Processing...' : `Purchase for $${price}`}
-      </button>
-
-      {/* Powered by Crossmint */}
-      <div className="text-center">
-        <p className="text-xs text-slate-500">
-          Powered by <span className="text-cyan-400">Crossmint</span> - Enterprise-grade payments
-        </p>
-      </div>
-    </div>
-  );
-
-  const renderProcessingStep = () => (
-    <div className="text-center space-y-6 py-8">
-      <div className="flex justify-center">
-        <Loader2 className="animate-spin text-cyan-400" size={48} />
-      </div>
-      <div className="space-y-2">
-        <h3 className="text-xl font-bold text-white">Processing Your Purchase</h3>
-        <p className="text-slate-400">Please wait while we mint your random Eko...</p>
-      </div>
-      <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-600/50">
-        <div className="text-sm text-slate-400 space-y-1">
-          <div>✓ Payment confirmed</div>
-          <div>🎲 Generating random traits...</div>
-          <div>⛏️ Minting your Eko...</div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderSuccessStep = () => (
-    <div className="text-center space-y-6 py-8">
-      <div className="flex justify-center">
-        <CheckCircle className="text-green-500" size={64} />
-      </div>
-      <div className="space-y-2">
-        <h3 className="text-2xl font-bold text-white">Purchase Successful!</h3>
-        <p className="text-slate-400">Your random Eko has been minted and sent to your wallet</p>
-      </div>
-      
-      {/* Mock NFT Preview */}
-      <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-600/50 max-w-xs mx-auto">
-        <div className="aspect-square bg-slate-700 rounded-lg mb-3 flex items-center justify-center">
-          <img 
-            src="https://ik.imagekit.io/q9x52ygvo/Untitled.png?updatedAt=1731900408675"
-            alt="Your new Eko"
-            className="w-full h-full object-cover rounded-lg"
-          />
-        </div>
-        <div className="text-white font-medium">Scavenjer #4721</div>
-        <div className="text-sm text-slate-400">Rare • Wasteland Explorer</div>
-      </div>
-
-      <div className="space-y-3">
-        <button 
-          onClick={onClose}
-          className="w-full bg-cyan-600 hover:bg-cyan-700 text-white py-3 rounded-lg font-medium transition-colors"
-        >
-          View in Collection
-        </button>
-        <button 
-          onClick={onClose}
-          className="w-full bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-lg font-medium transition-colors border border-slate-600"
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  );
-
-  const renderErrorStep = () => (
-    <div className="text-center space-y-6 py-8">
-      <div className="flex justify-center">
-        <X className="text-red-500" size={64} />
-      </div>
-      <div className="space-y-2">
-        <h3 className="text-2xl font-bold text-white">Purchase Failed</h3>
-        <p className="text-slate-400">Something went wrong. Please try again.</p>
-      </div>
-      <button 
-        onClick={() => setStep('payment')}
-        className="w-full bg-cyan-600 hover:bg-cyan-700 text-white py-3 rounded-lg font-medium transition-colors"
-      >
-        Try Again
-      </button>
-    </div>
-  );
-
-  const renderStepContent = () => {
-    switch (step) {
-      case 'payment':
-        return renderPaymentStep();
-      case 'processing':
-        return renderProcessingStep();
-      case 'success':
-        return renderSuccessStep();
-      case 'error':
-        return renderErrorStep();
-      default:
-        return renderPaymentStep();
-    }
-  };
+export default function CrossmintCheckoutModal({ isOpen, onClose }: CrossmintCheckoutModalProps) {
+  const account = useActiveAccount();
+  const address = account?.address;
 
   if (!isOpen) return null;
 
   return (
-    <AnimatePresence>
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-        onClick={onClose}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.9 }}
+        className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border border-gray-700 rounded-2xl max-w-md w-full mx-4 overflow-hidden shadow-2xl"
       >
-        <motion.div 
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          className="bg-slate-900 rounded-2xl border border-slate-700 max-w-md w-full max-h-[90vh] overflow-y-auto"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-slate-700">
-            <div className="text-lg font-semibold text-white">
-              {step === 'payment' && 'Purchase Eko'}
-              {step === 'processing' && 'Processing'}
-              {step === 'success' && 'Success'}
-              {step === 'error' && 'Error'}
+        {/* Header */}
+        <div className="relative p-4 sm:p-6 border-b border-gray-700 bg-gradient-to-r from-[#2DD4BF]/10 to-[#EC4899]/10">
+          <button
+            onClick={onClose}
+            className="absolute top-3 right-3 sm:top-4 sm:right-4 text-gray-400 hover:text-white transition-colors p-1"
+          >
+            <X size={20} />
+          </button>
+          
+          <div className="pr-8">
+            <h2 className="text-xl sm:text-2xl font-bold text-white mb-1">
+              Buy Random Eko
+            </h2>
+            <p className="text-sm sm:text-base text-gray-400">
+              From The Scavenjers Collection
+            </p>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+          {/* NFT Preview */}
+          <div className="text-center">
+            <div className="w-32 h-32 sm:w-40 sm:h-40 mx-auto mb-3 sm:mb-4 rounded-xl overflow-hidden bg-gray-800 border border-gray-600">
+              <img
+                src="https://ik.imagekit.io/q9x52ygvo/Untitled.png?updatedAt=1731900408675"
+                alt="Random Eko Preview"
+                className="w-full h-full object-cover"
+              />
             </div>
-            <button 
-              onClick={onClose}
-              className="text-slate-400 hover:text-white transition-colors"
-            >
-              <X size={24} />
-            </button>
+            <h3 className="text-lg sm:text-xl font-semibold text-white mb-1">
+              Mystery Eko
+            </h3>
+            <p className="text-xs sm:text-sm text-gray-400 mb-2">
+              Rare traits • Unique abilities
+            </p>
           </div>
 
-          {/* Content */}
-          <div className="p-6">
-            {renderStepContent()}
+          {/* Purchase Section */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center text-base sm:text-lg">
+              <span className="text-gray-300">Price:</span>
+              <span className="text-[#2DD4BF] font-bold">$29.55 USD</span>
+            </div>
+            
+            <div className="text-center">
+              <p className="text-xs sm:text-sm text-gray-400 mb-4">
+                Get a randomized Eko from our collection
+              </p>
+              
+              {address ? (
+                // Wallet is connected - show Crossmint checkout
+                <>
+                  <CrossmintProvider apiKey={clientApiKey}>
+                    <CrossmintHostedCheckout
+                      lineItems={{
+                        collectionLocator: `crossmint:${COLLECTION_ID}`,
+                        callData: {
+                          totalPrice: "111",
+                          quantity: 1,
+                        },
+                      }}
+                      payment={{ crypto: { enabled: true }, fiat: { enabled: true } }}
+                      className="w-full bg-gradient-to-r from-[#2DD4BF] to-[#EC4899] text-white py-3 px-4 sm:px-6 rounded-lg font-semibold hover:from-[#2DD4BF]/90 hover:to-[#EC4899]/90 transition-all duration-300"
+                      recipient={{ walletAddress: address }}
+                    />
+                  </CrossmintProvider>
+                  <div className="text-center text-xs text-gray-500 mt-2">
+                    You can purchase with your card or any cryptocurrency. Crossmint will handle the currency conversion for you.
+                  </div>
+                </>
+              ) : (
+                // Wallet not connected - show connection prompt
+                <div className="space-y-4">
+                  <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-3">
+                    <p className="text-yellow-300 text-sm">
+                      Please connect your wallet to purchase with Crossmint
+                    </p>
+                  </div>
+                  <ConnectButton
+                    client={client}
+                    appMetadata={{
+                      name: "NeoMarket",
+                      url: "https://neomarket.scavenjer.com"
+                    }}
+                    connectModal={{
+                      size: "wide",
+                      titleIcon: "https://zrolrdnymkkdcyksuctq.supabase.co/storage/v1/object/public/Gallery/Homepage%20Images/Neomarket%20Log.png"
+                    }}
+                    theme="dark"
+                    connectButton={{
+                      label: "Connect Wallet to Purchase",
+                      className: "!w-full !bg-gradient-to-r !from-[#2DD4BF] !to-[#EC4899] !text-white !py-3 !px-6 !rounded-lg !font-semibold hover:!from-[#2DD4BF]/90 hover:!to-[#EC4899]/90 !transition-all !duration-300"
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
-        </motion.div>
+        </div>
       </motion.div>
-    </AnimatePresence>
+    </div>
   );
 }

@@ -6,11 +6,11 @@ import {
   Grid3X3, 
   Gavel, 
   Zap, 
-  Plus, 
   User, 
   Activity, 
   Settings,
-  ShoppingCart
+  ShoppingCart,
+  Vote
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -24,8 +24,8 @@ const navigationItems = [
   { icon: Grid3X3, label: 'Collections', path: '/collections' },
   { icon: ShoppingCart, label: 'The Exchange', path: '/exchange' },
   { icon: Gavel, label: 'Auctions', path: '/auctions' },
+  { icon: Vote, label: 'Voting Circuit', path: '/voting-circuit' },
   { icon: Zap, label: 'The Dark Circuit', path: '/dark-circuit' },
-  { icon: Plus, label: 'List an Eko', path: '/list-eko' },
   { icon: User, label: 'My Ekos', path: '/my-ekos' },
   { icon: Activity, label: 'Activity', path: '/activity' },
   { icon: Settings, label: 'Settings', path: '/settings' },
@@ -38,7 +38,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <div 
       className={cn(
-        "bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 border-r border-slate-700/50 transition-all duration-300 flex flex-col backdrop-blur-sm",
+        "fixed left-0 top-0 h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 border-r border-slate-700/50 transition-all duration-300 flex flex-col backdrop-blur-sm z-40",
         collapsed ? "w-16" : "w-64"
       )}
       onMouseEnter={() => collapsed && onToggle()}

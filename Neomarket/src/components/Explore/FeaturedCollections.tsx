@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 interface Collection {
   id: string;
@@ -14,68 +15,24 @@ interface Collection {
 
 export default function FeaturedCollections() {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
-  // Mock featured collections data
+  // Featured collections data - only showing The Scavenjers for now
   const collections: Collection[] = [
     {
       id: '1',
-      name: 'UFT (a self portrait)',
-      creator: 'Snowfro',
-      coverImage: 'https://picsum.photos/300/200?random=201',
+      name: 'The Scavenjers',
+      creator: 'Scavenjer',
+      coverImage: 'https://ik.imagekit.io/q9x52ygvo/Untitled.png?updatedAt=1731900408675',
       verified: true,
-      floorPrice: '$1,204.66',
-      change7d: -14.0
-    },
-    {
-      id: '2',
-      name: 'CryptoFish',
-      creator: 'Artist2',
-      coverImage: 'https://picsum.photos/300/200?random=202',
-      verified: true,
-      floorPrice: '$946.47',
-      change7d: 1.5
-    },
-    {
-      id: '3',
-      name: "Lil' Bangers",
-      creator: 'BangerCreator',
-      coverImage: 'https://picsum.photos/300/200?random=203',
-      verified: false,
-      floorPrice: '$21.47',
-      change7d: -18.2
-    },
-    {
-      id: '4',
-      name: 'Quills Adventure',
-      creator: 'QuilArt',
-      coverImage: 'https://picsum.photos/300/200?random=204',
-      verified: true,
-      floorPrice: '$680.80',
-      change7d: 10.7
-    },
-    {
-      id: '5',
-      name: 'NODES',
-      creator: 'NodeMaster',
-      coverImage: 'https://picsum.photos/300/200?random=205',
-      verified: true,
-      floorPrice: '$48.19',
-      change7d: -2.5
-    },
-    {
-      id: '6',
-      name: 'Digital Dreams',
-      creator: 'DreamWeaver',
-      coverImage: 'https://picsum.photos/300/200?random=206',
-      verified: false,
-      floorPrice: '$156.32',
-      change7d: 25.8
+      floorPrice: '$25.00',
+      change7d: 0
     }
   ];
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
-      const scrollAmount = 252; // Card width (240px) + gap (12px)
+      const scrollAmount = 280;
       const currentScroll = scrollRef.current.scrollLeft;
       const targetScroll = direction === 'left' 
         ? currentScroll - scrollAmount 
@@ -89,90 +46,90 @@ export default function FeaturedCollections() {
   };
 
   return (
-    <div className="space-y-3">
-      {/* Section Header - Compact */}
+    <section className="space-y-3">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-white">Featured Collections</h2>
-        <div className="text-xs text-gray-400">This week's picks</div>
+        <h2 className="text-lg font-semibold text-white">Featured Collections</h2>
+        <div className="flex gap-1">
+          <button
+            onClick={() => scroll('left')}
+            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <button
+            onClick={() => scroll('right')}
+            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
       </div>
 
-      {/* Carousel Container */}
+      {/* Collections Carousel */}
       <div className="relative">
-        {/* Navigation Arrows - Smaller */}
-        <button
-          onClick={() => scroll('left')}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-1.5 bg-gray-900/90 hover:bg-gray-800 rounded-full border border-gray-700 transition-colors"
-        >
-          <ChevronLeft size={16} className="text-white" />
-        </button>
-        
-        <button
-          onClick={() => scroll('right')}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-1.5 bg-gray-900/90 hover:bg-gray-800 rounded-full border border-gray-700 transition-colors"
-        >
-          <ChevronRight size={16} className="text-white" />
-        </button>
-
-        {/* Collections Scroll Container - Compact */}
         <div
           ref={scrollRef}
-          className="flex gap-3 overflow-x-auto scrollbar-hide scroll-smooth px-6"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          className="flex gap-3 overflow-x-auto scrollbar-hide"
+          style={{ scrollSnapType: 'x mandatory' }}
         >
           {collections.map((collection) => (
             <div
               key={collection.id}
-              className="flex-shrink-0 w-60 bg-gray-900 rounded-lg overflow-hidden border border-gray-700 hover:border-gray-600 transition-all duration-200 cursor-pointer group hover:shadow-lg hover:shadow-black/20"
+              onClick={() => navigate('/collection/scavenjers')}
+              className="flex-shrink-0 w-60 bg-slate-800 rounded-lg overflow-hidden hover:bg-slate-700 transition-all duration-200 cursor-pointer group"
+              style={{ scrollSnapAlign: 'start' }}
             >
-              {/* Cover Image - Smaller */}
-              <div className="relative h-32 bg-gray-800 overflow-hidden">
+              {/* Cover Image */}
+              <div className="relative h-32 overflow-hidden">
                 <img
                   src={collection.coverImage}
                   alt={collection.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  loading="lazy"
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
               </div>
 
-              {/* Collection Info - Compact */}
+              {/* Collection Info */}
               <div className="p-3 space-y-2">
-                {/* Name and Verification */}
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-1">
-                      <h3 className="font-semibold text-white text-sm truncate">
-                        {collection.name}
-                      </h3>
-                      {collection.verified && (
-                        <CheckCircle size={12} className="text-blue-500 flex-shrink-0" />
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-400">by {collection.creator}</p>
+                <div>
+                  <div className="flex items-center gap-1">
+                    <h3 className="font-medium text-white text-sm truncate">{collection.name}</h3>
+                    {collection.verified && (
+                      <CheckCircle size={14} className="text-blue-500 flex-shrink-0" />
+                    )}
                   </div>
+                  <p className="text-xs text-slate-400">by {collection.creator}</p>
                 </div>
 
-                {/* Stats - Compact */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-xs text-gray-400">Floor</div>
-                    <div className="font-medium text-white text-sm">{collection.floorPrice}</div>
+                    <p className="text-xs text-slate-400">Floor Price</p>
+                    <p className="font-medium text-white text-sm">{collection.floorPrice}</p>
                   </div>
                   <div className="text-right">
-                    <div className="text-xs text-gray-400">7d</div>
-                    <div className={cn(
+                    <p className="text-xs text-slate-400">7D Change</p>
+                    <p className={cn(
                       "font-medium text-sm",
-                      collection.change7d >= 0 ? "text-green-400" : "text-red-400"
+                      collection.change7d > 0 ? "text-green-400" : collection.change7d < 0 ? "text-red-400" : "text-slate-400"
                     )}>
-                      {collection.change7d >= 0 ? '+' : ''}{collection.change7d.toFixed(1)}%
-                    </div>
+                      {collection.change7d > 0 && "+"}
+                      {collection.change7d === 0 ? "—" : `${collection.change7d}%`}
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
           ))}
+
+          {/* Add more collections placeholder */}
+          <div className="flex-shrink-0 w-60 h-full bg-slate-800/50 rounded-lg flex items-center justify-center border-2 border-dashed border-slate-700 hover:border-slate-600 transition-colors cursor-pointer">
+            <div className="text-center p-6">
+              <p className="text-slate-400 text-sm">More collections coming soon...</p>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

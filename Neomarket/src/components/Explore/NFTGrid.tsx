@@ -19,6 +19,7 @@ interface NFT {
 interface NFTGridProps {
   nfts: NFT[];
   loading: boolean;
+  activeCategory?: string;
   onLoadMore: () => void;
 }
 
@@ -118,7 +119,7 @@ function NFTCard({ nft }: { nft: NFT }) {
   );
 }
 
-export default function NFTGrid({ nfts, loading, onLoadMore }: NFTGridProps) {
+export default function NFTGrid({ nfts, loading, activeCategory, onLoadMore }: NFTGridProps) {
   // Intersection Observer for infinite scroll
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -138,31 +139,47 @@ export default function NFTGrid({ nfts, loading, onLoadMore }: NFTGridProps) {
     return () => observer.disconnect();
   }, [loading, onLoadMore]);
 
+
+
   return (
     <div className="space-y-4">
       {/* Section Header - Compact */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-white">Trending NFTs</h2>
+        <h2 className="text-lg font-bold text-white">Marketplace Listings</h2>
         <div className="text-xs text-gray-400">
           {nfts.length} items
         </div>
       </div>
 
-      {/* Grid - More compact */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-        {/* NFT Cards */}
-        {nfts.map((nft) => (
-          <NFTCard key={nft.id} nft={nft} />
-        ))}
-        
-        {/* Loading Skeletons */}
-        {loading && Array.from({ length: 8 }).map((_, i) => (
-          <NFTCardSkeleton key={`skeleton-${i}`} />
-        ))}
-      </div>
+      {/* Show content only if there are NFTs or loading */}
+      {(nfts.length > 0 || loading) ? (
+        <>
+          {/* Grid - More compact */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+            {/* NFT Cards */}
+            {nfts.map((nft) => (
+              <NFTCard key={nft.id} nft={nft} />
+            ))}
+            
+            {/* Loading Skeletons */}
+            {loading && Array.from({ length: 8 }).map((_, i) => (
+              <NFTCardSkeleton key={`skeleton-${i}`} />
+            ))}
+          </div>
 
-      {/* Infinite Scroll Sentinel */}
-      <div id="scroll-sentinel" className="h-6" />
+          {/* Infinite Scroll Sentinel */}
+          <div id="scroll-sentinel" className="h-6" />
+        </>
+      ) : (
+        /* No listings message */
+        <div className="text-center py-12">
+          <div className="text-6xl mb-4">🏪</div>
+          <h3 className="text-xl font-bold text-white mb-2">No Listings Available</h3>
+          <p className="text-slate-400">
+            Check back later for new Ekos available for purchase on the marketplace.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

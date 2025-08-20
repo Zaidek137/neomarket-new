@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Filter, Grid3X3, List, SlidersHorizontal, ChevronDown, ShoppingCart, Eye, Heart, DollarSign, Plus, Tag } from 'lucide-react';
+import { Search, Filter, Grid3X3, List, SlidersHorizontal, ChevronDown, ShoppingCart, Eye, Heart, DollarSign, Plus, Tag, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useActiveAccount, useSendTransaction, MediaRenderer } from 'thirdweb/react';
 import { getContract, readContract, prepareContractCall, toWei } from 'thirdweb';
@@ -101,7 +101,9 @@ export default function ExchangePage() {
               });
 
               const priceInPol = Number(listing.pricePerToken) / 1e18;
-              const priceInUsd = polPrice && priceInPol ? priceInPol * polPrice : 0;
+              // Use a fallback price for MATIC if not available
+              const maticPrice = polPrice || 0.85; // Fallback to approximate MATIC price
+              const priceInUsd = priceInPol * maticPrice;
 
               return {
                 listingId: listing.listingId,
@@ -135,7 +137,7 @@ export default function ExchangePage() {
     };
 
     fetchListings();
-  }, []); // Remove polPrice dependency to avoid refetching
+  }, [polPrice]); // Re-fetch when polPrice is available to ensure accurate USD prices
 
   // Update USD prices when polPrice changes
   useEffect(() => {
@@ -154,6 +156,38 @@ export default function ExchangePage() {
       );
     }
   }, [polPrice]);
+
+  // Cancel listing function
+  const cancelListing = async (listing: ListedEko) => {
+    if (!account || !listing.listingId) return;
+    
+    try {
+      const marketplaceContract = getContract({
+        client,
+        chain: polygon,
+        address: CONTRACT_ADDRESS
+      });
+
+      const transaction = prepareContractCall({
+        contract: marketplaceContract,
+        method: "function cancelListing(uint256 _listingId)",
+        params: [listing.listingId]
+      });
+
+      await sendTransaction(transaction);
+      
+      // Remove from local state
+      setListings(prevListings => 
+        prevListings.filter(l => l.listingId !== listing.listingId)
+      );
+      
+      // Show success message or notification
+      alert('Listing cancelled successfully!');
+    } catch (error) {
+      console.error('Error cancelling listing:', error);
+      alert('Failed to cancel listing. Please try again.');
+    }
+  };
 
   // Filter and sort Ekos
   const filteredEkos = useMemo(() => {
@@ -312,6 +346,8 @@ export default function ExchangePage() {
               setSelectedListing(listing);
               setShowBuyModal(true);
             }}
+            onCancelClick={cancelListing}
+            currentUserAddress={account?.address}
           />
         </div>
       </div>
@@ -438,11 +474,13 @@ function ExchangeFilters({ filters, onFiltersChange }: {
 }
 
 // Eko Grid Component
-function EkoGrid({ ekos, viewMode, loading, onBuyClick }: {
+function EkoGrid({ ekos, viewMode, loading, onBuyClick, onCancelClick, currentUserAddress }: {
   ekos: ListedEko[];
   viewMode: 'grid' | 'list';
   loading: boolean;
   onBuyClick: (listing: ListedEko) => void;
+  onCancelClick?: (listing: ListedEko) => void;
+  currentUserAddress?: string;
 }) {
   if (loading) {
     return (
@@ -472,7 +510,13 @@ function EkoGrid({ ekos, viewMode, loading, onBuyClick }: {
     return (
       <div className="space-y-3">
         {ekos.map((eko) => (
-          <EkoListCard key={eko.listingId.toString()} eko={eko} onBuyClick={onBuyClick} />
+          <EkoListCard 
+            key={eko.listingId.toString()} 
+            eko={eko} 
+            onBuyClick={onBuyClick}
+            onCancelClick={onCancelClick}
+            currentUserAddress={currentUserAddress}
+          />
         ))}
       </div>
     );
@@ -481,15 +525,27 @@ function EkoGrid({ ekos, viewMode, loading, onBuyClick }: {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
       {ekos.map((eko) => (
-        <EkoCard key={eko.listingId.toString()} eko={eko} onBuyClick={onBuyClick} />
+        <EkoCard 
+          key={eko.listingId.toString()} 
+          eko={eko} 
+          onBuyClick={onBuyClick}
+          onCancelClick={onCancelClick}
+          currentUserAddress={currentUserAddress}
+        />
       ))}
     </div>
   );
 }
 
 // Individual Eko Card
-function EkoCard({ eko, onBuyClick }: { eko: ListedEko; onBuyClick: (listing: ListedEko) => void }) {
+function EkoCard({ eko, onBuyClick, onCancelClick, currentUserAddress }: { 
+  eko: ListedEko; 
+  onBuyClick: (listing: ListedEko) => void;
+  onCancelClick?: (listing: ListedEko) => void;
+  currentUserAddress?: string;
+}) {
   const [isHovered, setIsHovered] = useState(false);
+  const isOwner = currentUserAddress && eko.seller.toLowerCase() === currentUserAddress.toLowerCase();
 
   return (
     <div
@@ -514,12 +570,21 @@ function EkoCard({ eko, onBuyClick }: { eko: ListedEko; onBuyClick: (listing: Li
           <button className="p-2 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-colors">
             <Eye size={16} className="text-white" />
           </button>
-          <button 
-            onClick={() => onBuyClick(eko)}
-            className="p-2 bg-cyan-500/80 backdrop-blur-sm rounded-lg hover:bg-cyan-600/80 transition-colors"
-          >
-            <ShoppingCart size={16} className="text-white" />
-          </button>
+          {isOwner ? (
+            <button 
+              onClick={() => onCancelClick && onCancelClick(eko)}
+              className="p-2 bg-red-500/80 backdrop-blur-sm rounded-lg hover:bg-red-600/80 transition-colors"
+            >
+              <X size={16} className="text-white" />
+            </button>
+          ) : (
+            <button 
+              onClick={() => onBuyClick(eko)}
+              className="p-2 bg-cyan-500/80 backdrop-blur-sm rounded-lg hover:bg-cyan-600/80 transition-colors"
+            >
+              <ShoppingCart size={16} className="text-white" />
+            </button>
+          )}
         </div>
 
         {/* Favorite */}
@@ -557,7 +622,14 @@ function EkoCard({ eko, onBuyClick }: { eko: ListedEko; onBuyClick: (listing: Li
 }
 
 // List view card
-function EkoListCard({ eko, onBuyClick }: { eko: ListedEko; onBuyClick: (listing: ListedEko) => void }) {
+function EkoListCard({ eko, onBuyClick, onCancelClick, currentUserAddress }: { 
+  eko: ListedEko; 
+  onBuyClick: (listing: ListedEko) => void;
+  onCancelClick?: (listing: ListedEko) => void;
+  currentUserAddress?: string;
+}) {
+  const isOwner = currentUserAddress && eko.seller.toLowerCase() === currentUserAddress.toLowerCase();
+  
   return (
     <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-lg p-4 hover:bg-slate-700/30 hover:border-slate-600/50 transition-all duration-300 cursor-pointer">
       <div className="flex items-center gap-4">
@@ -593,12 +665,21 @@ function EkoListCard({ eko, onBuyClick }: { eko: ListedEko; onBuyClick: (listing
               </>
             )}
           </div>
-          <button 
-            onClick={() => onBuyClick(eko)}
-            className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg transition-colors text-sm font-medium"
-          >
-            Buy Now
-          </button>
+          {isOwner ? (
+            <button 
+              onClick={() => onCancelClick && onCancelClick(eko)}
+              className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors text-sm font-medium"
+            >
+              Cancel Listing
+            </button>
+          ) : (
+            <button 
+              onClick={() => onBuyClick(eko)}
+              className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg transition-colors text-sm font-medium"
+            >
+              Buy Now
+            </button>
+          )}
         </div>
       </div>
     </div>

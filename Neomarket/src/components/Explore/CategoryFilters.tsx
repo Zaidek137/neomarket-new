@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 
 interface CategoryFiltersProps {
@@ -17,6 +18,15 @@ export default function CategoryFilters({
   activeCategory,
   onCategoryChange
 }: CategoryFiltersProps) {
+  const navigate = useNavigate();
+
+  const handleCategoryClick = (category: string) => {
+    if (category === 'Auctions') {
+      navigate('/auctions');
+    } else {
+      onCategoryChange(category);
+    }
+  };
 
   return (
     <div className="flex items-center justify-between gap-6 py-6">
@@ -25,7 +35,7 @@ export default function CategoryFilters({
         {categories.map((category) => (
           <button
             key={category}
-            onClick={() => onCategoryChange(category)}
+            onClick={() => handleCategoryClick(category)}
             className={cn(
               "px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 whitespace-nowrap",
               "hover:bg-slate-700/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/50",

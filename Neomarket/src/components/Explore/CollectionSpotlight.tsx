@@ -11,6 +11,7 @@ interface EkoLaunchModal {
   subtitle: string;
   description: string;
   image: string;
+  backgroundImage?: string; // Optional custom background image
   price: number;
   totalSupply: number;
   minted: number;
@@ -43,41 +44,18 @@ export default function CollectionSpotlight() {
     {
       type: 'eko-launch',
       id: 'eko-launch',
-      title: 'The Scavenjers Collection',
+      title: 'The Scavenjers Intro Collection',
       subtitle: 'Limited Edition Eko Launch',
-      description: 'Enter the post-apocalyptic world of Eko. Each Scavenjer is a unique digital collectible with rare traits and abilities. Join the adventure and discover the mysteries of the wasteland.',
+      description: 'The Scavenjers is an intro collection of unique digital avatars for the Scavenjer ecosystem that are used to participate in the Scavenjer ecosystem by allowing you to vote, claim rewards, compete, and more.',
       image: 'https://ik.imagekit.io/q9x52ygvo/Untitled.png?updatedAt=1731900408675',
-      price: 25,
+      backgroundImage: 'https://zrolrdnymkkdcyksuctq.supabase.co/storage/v1/object/public/Gallery/Homepage%20Images/Collection%20BG.png', // You can replace this with a custom 2:1 background image
+      price: 29.55,
       totalSupply: 9000,
       minted: 1250
-    },
-    {
-      type: 'collection',
-      id: 'hashmasks',
-      name: 'Hashmasks',
-      creator: '2d2502',
-      verified: true,
-      stats: {
-        floorPrice: '$471.10',
-        items: '16,384',
-        totalVolume: '$316M',
-        listed: '3.6%'
-      },
-      previewImages: Array.from({ length: 12 }, (_, i) => ({
-        id: i,
-        url: `https://picsum.photos/200/200?random=${i + 100}`
-      }))
     }
   ];
 
-  // Auto-advance slides every 10 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 10000);
 
-    return () => clearInterval(interval);
-  }, [slides.length]);
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % slides.length);
@@ -88,89 +66,68 @@ export default function CollectionSpotlight() {
   };
 
   const renderEkoLaunchModal = (slide: EkoLaunchModal) => (
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start h-80">
-      {/* Image - Takes up 2 columns */}
-      <div className="relative lg:col-span-2 h-full">
-        <div className="h-full rounded-xl overflow-hidden bg-slate-800 border border-slate-600/50">
-          <img
-            src={slide.image}
-            alt={slide.title}
-            className="w-full h-full object-cover"
-          />
-        </div>
-        
-        {/* Overlay badge */}
-        <div className="absolute top-3 left-3 bg-cyan-500/90 backdrop-blur-sm px-2 py-1 rounded-full">
-          <span className="text-white font-medium text-xs">🚀 New Launch</span>
+    <div className="relative h-[280px] w-full overflow-hidden rounded-xl">
+      {/* Background Image with 2:1 aspect ratio */}
+      <div className="absolute inset-0">
+        <img
+          src={slide.backgroundImage || slide.image}
+          alt={slide.title}
+          className="w-full h-full object-cover"
+        />
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-black/40" />
+      </div>
+
+      {/* Content Overlays */}
+      <div className="absolute inset-0 flex items-center p-4 lg:p-6">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4 lg:gap-6 w-full">
+          
+          {/* Left: Title and Description Box */}
+          <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg p-3 lg:p-4 border border-slate-700/50 w-full lg:max-w-md">
+            <h2 className="text-lg lg:text-xl font-bold text-white mb-1">{slide.title}</h2>
+            <p className="text-cyan-400 font-medium text-xs lg:text-sm mb-1 lg:mb-2">{slide.subtitle}</p>
+            <p className="text-slate-300 text-xs lg:text-sm leading-relaxed line-clamp-2 hidden lg:block">{slide.description}</p>
+          </div>
+
+          {/* Center: Stats Boxes */}
+          <div className="flex gap-2 lg:gap-3">
+            <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg p-2 lg:p-3 border border-slate-700/50 text-center min-w-[80px] lg:min-w-[100px]">
+              <div className="text-[10px] lg:text-xs text-slate-400">Price</div>
+              <div className="text-base lg:text-lg font-bold text-white">${slide.price}</div>
+            </div>
+            <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg p-2 lg:p-3 border border-slate-700/50 text-center min-w-[80px] lg:min-w-[100px]">
+              <div className="text-[10px] lg:text-xs text-slate-400">Supply</div>
+              <div className="text-base lg:text-lg font-bold text-white">{slide.totalSupply.toLocaleString()}</div>
+            </div>
+            <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg p-2 lg:p-3 border border-slate-700/50 text-center min-w-[80px] lg:min-w-[100px]">
+              <div className="text-[10px] lg:text-xs text-slate-400">Minted</div>
+              <div className="text-base lg:text-lg font-bold text-white">{slide.minted.toLocaleString()}</div>
+              <div className="text-[10px] text-cyan-400">{((slide.minted / slide.totalSupply) * 100).toFixed(1)}%</div>
+            </div>
+          </div>
+
+          {/* Right: Action Button */}
+          <div className="w-full lg:w-auto lg:ml-auto">
+            <button 
+              onClick={() => setShowCrossmintModal(true)}
+              className="w-full lg:w-auto bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 shadow-lg text-sm lg:text-base"
+            >
+              <ShoppingCart size={16} className="lg:w-[18px] lg:h-[18px]" />
+              Buy with Crossmint
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Content - Takes up 3 columns */}
-      <div className="lg:col-span-3 h-full flex flex-col justify-between py-2">
-        {/* Title and Description */}
-        <div className="space-y-2">
-          <div>
-            <h2 className="text-xl font-bold text-white leading-tight">{slide.title}</h2>
-            <p className="text-cyan-400 font-medium text-sm">{slide.subtitle}</p>
-          </div>
-          <p className="text-slate-300 text-sm leading-relaxed line-clamp-2">{slide.description}</p>
-        </div>
-
-        {/* Stats and Progress */}
-        <div className="space-y-3 my-3">
-          <div className="grid grid-cols-3 gap-2">
-            <div className="bg-slate-800/50 rounded p-2 border border-slate-600/50 text-center">
-              <div className="text-xs text-slate-400">Price</div>
-              <div className="text-sm font-bold text-white">${slide.price}</div>
-            </div>
-            <div className="bg-slate-800/50 rounded p-2 border border-slate-600/50 text-center">
-              <div className="text-xs text-slate-400">Supply</div>
-              <div className="text-sm font-bold text-white">{slide.totalSupply.toLocaleString()}</div>
-            </div>
-            <div className="bg-slate-800/50 rounded p-2 border border-slate-600/50 text-center">
-              <div className="text-xs text-slate-400">Minted</div>
-              <div className="text-sm font-bold text-white">{slide.minted.toLocaleString()}</div>
-            </div>
-          </div>
-
-          {/* Progress Bar */}
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs text-slate-400">
-              <span>Progress</span>
-              <span className="font-medium">{((slide.minted / slide.totalSupply) * 100).toFixed(1)}%</span>
-            </div>
-            <div className="w-full bg-slate-700 rounded-full h-1.5">
-              <div 
-                className="bg-gradient-to-r from-cyan-500 to-blue-500 h-1.5 rounded-full transition-all duration-500"
-                style={{ width: `${(slide.minted / slide.totalSupply) * 100}%` }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-2 mt-auto">
-          <button 
-            onClick={() => setShowCrossmintModal(true)}
-            className="flex-1 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1"
-          >
-            <ShoppingCart size={14} />
-            Mint Random Eko
-          </button>
-          <button 
-            onClick={() => navigate('/collection/scavenjers')}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1 border border-slate-600"
-          >
-            <Eye size={14} />
-            View Collection
-          </button>
-        </div>
+      {/* Badge */}
+      <div className="absolute top-4 left-4 bg-cyan-500/90 backdrop-blur-sm px-3 py-1 rounded-full">
+        <span className="text-white font-medium text-xs">🚀 New Launch</span>
       </div>
     </div>
   );
 
   const renderCollectionModal = (slide: CollectionModal) => (
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start h-80">
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start min-h-[320px]">
       {/* Preview Mosaic - Takes up 2 columns */}
       <div className="lg:col-span-2 h-full">
         <div className="grid grid-cols-4 gap-1 h-full">
@@ -242,39 +199,9 @@ export default function CollectionSpotlight() {
 
   return (
     <>
-      <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl overflow-hidden border border-slate-700/50">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-blue-500/5" />
-        
-        {/* Navigation Arrows */}
-        <button 
-          onClick={prevSlide}
-          className="absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all duration-200"
-        >
-          <ChevronLeft size={20} />
-        </button>
-        <button 
-          onClick={nextSlide}
-          className="absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all duration-200"
-        >
-          <ChevronRight size={20} />
-        </button>
-
-        {/* Slide Indicators */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-          {slides.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentSlide(index)}
-              className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                index === currentSlide ? 'bg-cyan-400 w-6' : 'bg-white/30'
-              }`}
-            />
-          ))}
-        </div>
-
+      <div className="relative rounded-xl overflow-hidden">
         {/* Slide Content */}
-        <div className="relative p-6">
+        <div className="relative">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentSlide}

@@ -16,6 +16,9 @@ const ExplorePage = React.lazy(() => import('./components/Explore/ExplorePage'))
 const CollectionsPage = React.lazy(() => import('./components/Collections/CollectionsPage'));
 const ScavenjersCollectionPage = React.lazy(() => import('./components/Collections/ScavenjersCollectionPage'));
 const ExchangePage = React.lazy(() => import('./components/Exchange/ExchangePage'));
+const VotingCircuitPage = React.lazy(() => import('./components/VotingCircuitPage'));
+const MyEkosPage = React.lazy(() => import('./components/MyEkosPage'));
+const AuctionsPage = React.lazy(() => import('./components/AuctionsPage'));
 const DarkCircuitPage = React.lazy(() => import('./components/DarkCircuit/DarkCircuitPage'));
 const ActivityPage = React.lazy(() => import('./components/ActivityPage'));
 const PrivacyPolicyPage = React.lazy(() => import('./components/PrivacyPolicyPage'));
@@ -68,6 +71,9 @@ function App() {
                   <Route path="collection" element={<Navigate to="/collection/scavenjers" replace />} />
                   <Route path="collection/scavenjers" element={<ScavenjersCollectionPage />} />
                   <Route path="exchange" element={<ExchangePage />} />
+                  <Route path="auctions" element={<AuctionsPage />} />
+                  <Route path="voting-circuit" element={<VotingCircuitPage />} />
+                  <Route path="my-ekos" element={<MyEkosPage />} />
                   <Route path="activity" element={<ActivityPage />} />
                   <Route path="neomarket" element={<NeoMarketPage />} />
                   <Route path="marketplace" element={<Navigate to="/collections" replace />} />

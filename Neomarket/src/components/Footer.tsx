@@ -13,7 +13,7 @@ export default function Footer({ onPageChange }: FooterProps) {
     instagram: 'https://www.instagram.com/scavenjer.game/',
     twitter: 'https://x.com/ScavenjerGame',
     youtube: 'https://www.youtube.com/@ScavenjerZaidek',
-    discord: 'https://discord.gg/wX9hjx4cwA',
+    discord: 'https://discord.gg/cp7jUyENEC',
     facebook: 'https://www.facebook.com/scavenjergame',
     tiktok: 'https://www.tiktok.com/@scavenjergame'
   };

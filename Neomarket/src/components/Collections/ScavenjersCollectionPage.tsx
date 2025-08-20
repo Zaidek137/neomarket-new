@@ -60,10 +60,10 @@ const collectionInfo: CollectionInfo = {
   description: 'A collection of unique digital collectibles exploring the post-apocalyptic world of Eko.',
   image: 'https://ik.imagekit.io/q9x52ygvo/Untitled.png?updatedAt=1731900408675',
   bannerImage: 'https://ik.imagekit.io/q9x52ygvo/banner-scavenjers.png',
-  totalSupply: 10000,
+  totalSupply: 9,
   floorPrice: 0.15,
   totalVolume: 2847,
-  owners: 3421,
+  owners: 3,
   verified: true,
   creator: 'NeoMarket'
 };

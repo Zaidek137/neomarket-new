@@ -25,9 +25,9 @@ export interface Collection {
 const mainCollection: Collection = {
   id: 'scavenjers',
   name: 'The Scavenjers',
-  description: 'A collection of unique digital collectibles exploring the post-apocalyptic world of Eko.',
-  image: 'https://ik.imagekit.io/q9x52ygvo/Untitled.png?updatedAt=1731900408675',
-  bannerImage: 'https://ik.imagekit.io/q9x52ygvo/banner-scavenjers.png',
+  description: 'An intro collection of unique digital avatars for the Scavenjer ecosystem.',
+  image: 'https://zrolrdnymkkdcyksuctq.supabase.co/storage/v1/object/public/Gallery/zaidek._An_anime-style_illustration_of_a_young_male_character_9b6aef66-a91e-4249-b125-692f0859d6ea_2.png',
+  bannerImage: 'https://zrolrdnymkkdcyksuctq.supabase.co/storage/v1/object/public/Gallery/zaidek._An_anime-style_illustration_of_a_young_male_character_9b6aef66-a91e-4249-b125-692f0859d6ea_2.png',
   floorPrice: 29.99,
   items: 9000,
   owners: 10,

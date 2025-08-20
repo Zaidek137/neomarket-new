@@ -3,6 +3,7 @@ import CategoryFilters from './CategoryFilters';
 import CollectionSpotlight from './CollectionSpotlight';
 import NFTGrid from './NFTGrid';
 import FeaturedCollections from './FeaturedCollections';
+import VotingHighlight from './VotingHighlight';
 import { useNeoMarket } from '../../hooks/useNeoMarket';
 import { useCryptoPrice } from '../../hooks/useCryptoPrice';
 
@@ -45,10 +46,14 @@ export default function ExplorePage() {
       {/* Featured Collections */}
       <FeaturedCollections />
 
+      {/* Voting Highlight */}
+      <VotingHighlight />
+
       {/* NFT Grid */}
       <NFTGrid 
         nfts={nfts} 
         loading={loading}
+        activeCategory={activeCategory}
         onLoadMore={() => {
           // Mock infinite scroll
           console.log('Loading more NFTs...');

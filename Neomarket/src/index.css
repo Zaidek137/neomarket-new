@@ -20,9 +20,6 @@
   }
 }
 
-/* Import scroll animations */
-@import './styles/scroll-animations.css';
-
 body {
   margin: 0;
   font-family: 'Inter', sans-serif;

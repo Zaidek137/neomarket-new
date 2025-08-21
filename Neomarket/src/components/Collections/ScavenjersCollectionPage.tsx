@@ -58,7 +58,7 @@ interface CollectionInfo {
 const collectionInfo: CollectionInfo = {
   name: 'The Scavenjers',
   description: 'A collection of unique digital collectibles exploring the post-apocalyptic world of Eko.',
-  image: 'https://ik.imagekit.io/q9x52ygvo/Untitled.png?updatedAt=1731900408675',
+  image: 'https://zrolrdnymkkdcyksuctq.supabase.co/storage/v1/object/public/Gallery/Main%20Scavenjer.png',
   bannerImage: 'https://ik.imagekit.io/q9x52ygvo/banner-scavenjers.png',
   totalSupply: 9,
   floorPrice: 0.15,

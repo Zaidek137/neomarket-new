@@ -1,8 +1,6 @@
-import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home, 
-  Search, 
   Grid3X3, 
   Gavel, 
   Zap, 
@@ -20,11 +18,11 @@ interface SidebarProps {
 }
 
 const navigationItems = [
-  { icon: Home, label: 'Home', path: '/explore' },
+  { icon: Home, label: 'Explore', path: '/explore' },
   { icon: Grid3X3, label: 'Collections', path: '/collections' },
   { icon: ShoppingCart, label: 'The Exchange', path: '/exchange' },
   { icon: Gavel, label: 'Auctions', path: '/auctions' },
-  { icon: Vote, label: 'Voting Circuit', path: '/voting-circuit' },
+  { icon: Vote, label: 'The Nexus', path: '/nexus' },
   { icon: Zap, label: 'The Dark Circuit', path: '/dark-circuit' },
   { icon: User, label: 'My Ekos', path: '/my-ekos' },
   { icon: Activity, label: 'Activity', path: '/activity' },
@@ -53,7 +51,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             className="w-12 h-8 object-contain rounded-lg shadow-lg shadow-cyan-500/25"
           />
           {!collapsed && (
-            <span className="text-lg font-bold bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
+            <span className="text-lg font-bold font-display bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
               NeoMarket
             </span>
           )}

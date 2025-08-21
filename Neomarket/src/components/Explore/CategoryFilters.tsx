@@ -23,6 +23,8 @@ export default function CategoryFilters({
   const handleCategoryClick = (category: string) => {
     if (category === 'Auctions') {
       navigate('/auctions');
+    } else if (category === 'Collections') {
+      navigate('/collections');
     } else {
       onCategoryChange(category);
     }

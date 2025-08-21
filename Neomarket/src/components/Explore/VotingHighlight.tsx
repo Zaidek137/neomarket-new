@@ -45,10 +45,10 @@ export default function VotingHighlight() {
           
           {/* Right Action */}
           <button 
-            onClick={() => navigate('/voting-circuit')}
+            onClick={() => navigate('/nexus')}
             className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-lg"
           >
-            <span>Enter Voting Circuit</span>
+            <span>Enter The Nexus</span>
             <ChevronRight size={18} />
           </button>
         </div>

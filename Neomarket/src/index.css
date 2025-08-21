@@ -22,7 +22,7 @@
 
 body {
   margin: 0;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Exo 2', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: 
@@ -208,8 +208,29 @@ body.mobile-menu-open {
         background-size: 30px 30px;
     }
 
+    /* Font utility classes */
     .font-rajdhani {
         font-family: 'Rajdhani', sans-serif;
+    }
+    
+    .font-display {
+        font-family: 'Audiowide', 'Exo 2', sans-serif;
+        letter-spacing: 0.05em;
+    }
+    
+    .font-tech {
+        font-family: 'Electrolize', 'Exo 2', sans-serif;
+        letter-spacing: 0.025em;
+    }
+    
+    .font-cyber {
+        font-family: 'Share Tech Mono', monospace;
+        letter-spacing: 0.1em;
+    }
+    
+    .font-orbitron {
+        font-family: 'Orbitron', sans-serif;
+        letter-spacing: 0.05em;
     }
 }
 

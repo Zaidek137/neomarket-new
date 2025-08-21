@@ -23,7 +23,7 @@ export default function FeaturedCollections() {
       id: '1',
       name: 'The Scavenjers',
       creator: 'Scavenjer',
-      coverImage: 'https://ik.imagekit.io/q9x52ygvo/Untitled.png?updatedAt=1731900408675',
+      coverImage: 'https://zrolrdnymkkdcyksuctq.supabase.co/storage/v1/object/public/Gallery/Main%20Scavenjer.png',
       verified: true,
       floorPrice: '$25.00',
       change7d: 0
@@ -49,7 +49,7 @@ export default function FeaturedCollections() {
     <section className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-white">Featured Collections</h2>
+        <h2 className="text-lg font-semibold font-tech text-white">Featured Collections</h2>
         <div className="flex gap-1">
           <button
             onClick={() => scroll('left')}
@@ -81,7 +81,7 @@ export default function FeaturedCollections() {
               style={{ scrollSnapAlign: 'start' }}
             >
               {/* Cover Image */}
-              <div className="relative h-32 overflow-hidden">
+              <div className="relative h-56 overflow-hidden">
                 <img
                   src={collection.coverImage}
                   alt={collection.name}

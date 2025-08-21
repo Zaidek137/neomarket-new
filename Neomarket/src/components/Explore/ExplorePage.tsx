@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import CategoryFilters from './CategoryFilters';
 import CollectionSpotlight from './CollectionSpotlight';
 import NFTGrid from './NFTGrid';
@@ -10,8 +10,8 @@ import { useCryptoPrice } from '../../hooks/useCryptoPrice';
 export default function ExplorePage() {
   const [activeCategory, setActiveCategory] = useState('All');
 
-  const { listings, loading, error } = useNeoMarket();
-  const { price: maticPrice } = useCryptoPrice('matic-network');
+  const { listings, loading } = useNeoMarket();
+  const { polPrice: maticPrice } = useCryptoPrice();
 
   // Transform listings to NFT format for the grid
   const nfts = useMemo(() => {
@@ -33,7 +33,7 @@ export default function ExplorePage() {
   }, [listings, maticPrice]);
 
   return (
-    <div className="px-3 py-4 space-y-4 max-w-full overflow-hidden">
+    <div className="px-3 py-4 space-y-14 max-w-full overflow-hidden">
       {/* Category Filters */}
       <CategoryFilters
         activeCategory={activeCategory}
@@ -53,7 +53,6 @@ export default function ExplorePage() {
       <NFTGrid 
         nfts={nfts} 
         loading={loading}
-        activeCategory={activeCategory}
         onLoadMore={() => {
           // Mock infinite scroll
           console.log('Loading more NFTs...');

@@ -4,6 +4,9 @@ export default {
   theme: {
     extend: {
       fontFamily: {
+        sans: ['Exo 2', 'system-ui', 'sans-serif'],
+        display: ['Audiowide', 'Exo 2', 'sans-serif'],
+        tech: ['Electrolize', 'Exo 2', 'sans-serif'],
         orbitron: ['Orbitron', 'sans-serif'],
         cyber: ['Share Tech Mono', 'monospace'],
         rajdhani: ['Rajdhani', 'sans-serif'],

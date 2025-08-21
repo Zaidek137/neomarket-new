@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { CheckCircle, Heart, Eye, ChevronLeft, ChevronRight, ShoppingCart, ExternalLink, Play } from 'lucide-react';
+import { useState } from 'react';
+import { CheckCircle, Heart, Eye, ShoppingCart } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import CrossmintCheckoutModal from '../CrossmintCheckoutModal';
@@ -14,7 +14,6 @@ interface EkoLaunchModal {
   backgroundImage?: string; // Optional custom background image
   price: number;
   totalSupply: number;
-  minted: number;
 }
 
 interface CollectionModal {
@@ -47,7 +46,7 @@ export default function CollectionSpotlight() {
       title: 'The Scavenjers Intro Collection',
       subtitle: 'Limited Edition Eko Launch',
       description: 'The Scavenjers is an intro collection of unique digital avatars for the Scavenjer ecosystem that are used to participate in the Scavenjer ecosystem by allowing you to vote, claim rewards, compete, and more.',
-      image: 'https://ik.imagekit.io/q9x52ygvo/Untitled.png?updatedAt=1731900408675',
+      image: 'https://zrolrdnymkkdcyksuctq.supabase.co/storage/v1/object/public/Gallery/Main%20Scavenjer.png',
       backgroundImage: 'https://zrolrdnymkkdcyksuctq.supabase.co/storage/v1/object/public/Gallery/Homepage%20Images/Collection%20BG.png', // You can replace this with a custom 2:1 background image
       price: 29.55,
       totalSupply: 9000,
@@ -57,13 +56,7 @@ export default function CollectionSpotlight() {
 
 
 
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % slides.length);
-  };
 
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
-  };
 
   const renderEkoLaunchModal = (slide: EkoLaunchModal) => (
     <div className="relative h-[280px] w-full overflow-hidden rounded-xl">
@@ -99,21 +92,16 @@ export default function CollectionSpotlight() {
               <div className="text-[10px] lg:text-xs text-slate-400">Supply</div>
               <div className="text-base lg:text-lg font-bold text-white">{slide.totalSupply.toLocaleString()}</div>
             </div>
-            <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg p-2 lg:p-3 border border-slate-700/50 text-center min-w-[80px] lg:min-w-[100px]">
-              <div className="text-[10px] lg:text-xs text-slate-400">Minted</div>
-              <div className="text-base lg:text-lg font-bold text-white">{slide.minted.toLocaleString()}</div>
-              <div className="text-[10px] text-cyan-400">{((slide.minted / slide.totalSupply) * 100).toFixed(1)}%</div>
-            </div>
           </div>
 
           {/* Right: Action Button */}
           <div className="w-full lg:w-auto lg:ml-auto">
             <button 
               onClick={() => setShowCrossmintModal(true)}
-              className="w-full lg:w-auto bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 shadow-lg text-sm lg:text-base"
+              className="w-full lg:w-auto bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-black px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 shadow-lg text-sm lg:text-base"
             >
               <ShoppingCart size={16} className="lg:w-[18px] lg:h-[18px]" />
-              Buy with Crossmint
+              Click to Buy an Eko now!
             </button>
           </div>
         </div>
@@ -165,8 +153,8 @@ export default function CollectionSpotlight() {
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-2 my-4">
           <div className="bg-slate-800/50 rounded p-2 border border-slate-600/50 text-center">
-            <div className="text-xs text-slate-400">Floor Price</div>
-            <div className="text-sm font-bold text-white">{slide.stats.floorPrice}</div>
+            <div className="text-xs text-slate-400">Average Price</div>
+            <div className="text-sm font-bold text-white">{slide.stats.averagePrice}</div>
           </div>
           <div className="bg-slate-800/50 rounded p-2 border border-slate-600/50 text-center">
             <div className="text-xs text-slate-400">Items</div>
@@ -184,7 +172,10 @@ export default function CollectionSpotlight() {
 
         {/* Action Buttons */}
         <div className="flex gap-2 mt-auto">
-          <button className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1">
+          <button 
+            onClick={() => navigate('/collection/scavenjers')}
+            className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1"
+          >
             <Eye size={14} />
             View Collection
           </button>

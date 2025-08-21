@@ -367,15 +367,7 @@ export default function DarkCircuitPage() {
                 >
                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 rounded-full blur-3xl"></div>
                     
-                    <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                        className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-8"
-                    >
-                        <div className="w-16 h-16 border-2 border-cyan-400/30 rounded-full">
-                            <div className="w-full h-full border-t-2 border-cyan-400 rounded-full animate-spin"></div>
-                        </div>
-                    </motion.div>
+
 
                     <div className="relative z-10">
                         <motion.div

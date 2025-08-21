@@ -58,7 +58,7 @@ export default function CollectionSpotlight() {
 
 
   const renderEkoLaunchModal = (slide: EkoLaunchModal) => (
-    <div className="relative h-[200px] sm:h-[240px] lg:h-[280px] w-full overflow-hidden rounded-xl">
+    <div className="relative h-[280px] sm:h-[240px] lg:h-[320px] w-full overflow-hidden rounded-xl">
       {/* Background Image with 2:1 aspect ratio */}
       <div className="absolute inset-0">
         <img
@@ -71,7 +71,7 @@ export default function CollectionSpotlight() {
       </div>
 
       {/* Content Overlays */}
-      <div className="absolute inset-0 flex items-center p-3 sm:p-4 lg:p-6">
+      <div className="absolute inset-0 flex items-start sm:items-center pt-4 pb-16 sm:pb-4 px-3 sm:px-4 lg:px-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 lg:gap-6 w-full">
           
           {/* Left: Title and Description Box */}

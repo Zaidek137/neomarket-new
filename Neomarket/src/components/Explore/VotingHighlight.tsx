@@ -33,7 +33,7 @@ export default function VotingHighlight() {
               <div className="flex items-center gap-3 sm:gap-4 text-[10px] sm:text-xs text-slate-400">
                 <div className="flex items-center gap-0.5 sm:gap-1">
                   <Users size={12} className="sm:w-[14px] sm:h-[14px]" />
-                  <span>1,250+ Voters</span>
+                  <span>9000 Voters</span>
                 </div>
                 <div className="flex items-center gap-0.5 sm:gap-1">
                   <Trophy size={12} className="sm:w-[14px] sm:h-[14px]" />

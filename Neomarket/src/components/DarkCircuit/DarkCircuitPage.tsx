@@ -33,34 +33,34 @@ interface RewardFormData {
     additionalInfo: string;
 }
 
-// Floating orbs animation component
-const FloatingOrbs = () => (
+// Floating orbs animation component - optimized for performance
+const FloatingOrbs = React.memo(() => (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(6)].map((_, i) => (
+        {[...Array(4)].map((_, i) => (
             <motion.div
                 key={i}
-                className="absolute rounded-full bg-gradient-to-r from-cyan-400/20 to-purple-400/20 blur-xl"
+                className="absolute rounded-full bg-gradient-to-r from-cyan-400/15 to-purple-400/15 blur-lg"
                 style={{
-                    left: `${Math.random() * 100}%`,
-                    top: `${Math.random() * 100}%`,
-                    width: `${50 + Math.random() * 100}px`,
-                    height: `${50 + Math.random() * 100}px`,
+                    left: `${20 + i * 20}%`,
+                    top: `${20 + i * 15}%`,
+                    width: `${60 + i * 20}px`,
+                    height: `${60 + i * 20}px`,
                 }}
                 animate={{
-                    x: [0, Math.random() * 100 - 50],
-                    y: [0, Math.random() * 100 - 50],
-                    scale: [1, 1.2, 1],
-                    opacity: [0.3, 0.6, 0.3],
+                    x: [0, 30, 0],
+                    y: [0, 20, 0],
+                    opacity: [0.2, 0.4, 0.2],
                 }}
                 transition={{
-                    duration: 10 + Math.random() * 10,
+                    duration: 15 + i * 2,
                     repeat: Infinity,
                     repeatType: "reverse",
+                    ease: "easeInOut",
                 }}
             />
         ))}
     </div>
-);
+));
 
 // Circuit pattern background
 const CircuitPattern = () => (
@@ -119,8 +119,13 @@ export default function DarkCircuitPage() {
         setNextRotation(nextRotationDate);
     }, []);
 
-    // Fetch total supply from contract
+    // Fetch total supply from contract with caching
     const fetchTotalSupply = useCallback(async () => {
+        // Skip if we fetched recently (within 5 minutes)
+        if (lastSupplyUpdate && Date.now() - lastSupplyUpdate.getTime() < 5 * 60 * 1000) {
+            return;
+        }
+
         try {
             const supply = await readContract({
                 contract: nftContract,
@@ -137,7 +142,7 @@ export default function DarkCircuitPage() {
         } catch (error) {
             console.error('Error fetching total supply:', error);
         }
-    }, [totalSupply]);
+    }, [totalSupply, lastSupplyUpdate]);
 
     // Get featured NFT based on current period
     const getFeaturedNft = useCallback(async () => {
@@ -255,7 +260,6 @@ export default function DarkCircuitPage() {
             try {
                 calculateCurrentPeriod();
                 await fetchTotalSupply();
-                await getFeaturedNft();
             } catch (error) {
                 setError('Failed to initialize quantum state');
                 console.error('Initialization error:', error);
@@ -265,11 +269,22 @@ export default function DarkCircuitPage() {
         };
 
         initializeData();
-    }, [calculateCurrentPeriod, fetchTotalSupply, getFeaturedNft]);
+    }, [calculateCurrentPeriod, fetchTotalSupply]);
 
-    // Check ownership when account or featured NFT changes
+    // Load featured NFT separately after total supply is available
     useEffect(() => {
-        checkOwnership();
+        if (totalSupply > 0 && currentPeriod > 0) {
+            getFeaturedNft();
+        }
+    }, [totalSupply, currentPeriod, getFeaturedNft]);
+
+    // Check ownership when account or featured NFT changes (debounced)
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            checkOwnership();
+        }, 500); // Debounce for 500ms
+
+        return () => clearTimeout(timeoutId);
     }, [checkOwnership]);
 
     // Auto refresh

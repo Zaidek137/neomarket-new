@@ -31,15 +31,15 @@ export default function CategoryFilters({
   };
 
   return (
-    <div className="flex items-center justify-between gap-6 py-6">
+    <div className="flex items-center justify-between gap-3 sm:gap-6 py-3 sm:py-6">
       {/* Category Pills */}
-      <div className="flex items-center gap-3 overflow-x-auto scrollbar-hide">
+      <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto scrollbar-hide">
         {categories.map((category) => (
           <button
             key={category}
             onClick={() => handleCategoryClick(category)}
             className={cn(
-              "px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 whitespace-nowrap",
+              "px-3 sm:px-5 lg:px-6 py-2 sm:py-2.5 lg:py-3 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 whitespace-nowrap",
               "hover:bg-slate-700/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/50",
               "backdrop-blur-sm border",
               activeCategory === category

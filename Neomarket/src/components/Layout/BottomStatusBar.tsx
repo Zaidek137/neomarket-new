@@ -61,33 +61,40 @@ const socialLinks = [
 export default function BottomStatusBar() {
   return (
     <footer className="sticky bottom-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-700/50">
-      <div className="px-4 lg:px-6 max-w-full overflow-hidden">
-        <div className="flex items-center justify-between h-12 text-xs gap-4">
+      <div className="px-3 sm:px-4 lg:px-6 max-w-full overflow-hidden">
+        <div className="flex items-center justify-between h-10 sm:h-12 text-[10px] sm:text-xs gap-2 sm:gap-4">
           {/* Legal Links */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto scrollbar-none">
             {legalLinks.map((item) => (
               <Link
                 key={item.label}
                 to={item.link}
-                className="text-slate-400 hover:text-cyan-300 transition-colors font-medium"
+                className="text-slate-400 hover:text-cyan-300 transition-colors font-medium whitespace-nowrap"
               >
-                {item.label}
+                <span className="hidden sm:inline">{item.label}</span>
+                <span className="sm:hidden">
+                  {item.label === 'Terms of Service' ? 'Terms' : 
+                   item.label === 'Privacy Policy' ? 'Privacy' : 
+                   item.label}
+                </span>
               </Link>
             ))}
           </div>
 
           {/* Social Media Icons */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3">
             {socialLinks.map((social) => (
               <a
                 key={social.name}
                 href={social.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-slate-400 hover:text-cyan-400 transition-colors p-1 rounded hover:bg-slate-800/50"
+                className="text-slate-400 hover:text-cyan-400 transition-colors p-0.5 sm:p-1 rounded hover:bg-slate-800/50"
                 title={social.name}
               >
-                {social.icon}
+                <div className="w-3.5 h-3.5 sm:w-4 sm:h-4">
+                  {social.icon}
+                </div>
               </a>
             ))}
           </div>

@@ -86,26 +86,26 @@ export default function CreateProposalModal({ isOpen, onClose, onProposalCreated
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.9 }}
-          className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-auto border border-slate-700"
+          className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-lg sm:rounded-xl lg:rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-auto border border-slate-700"
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-slate-700">
-            <h2 className="text-2xl font-bold font-tech text-white">Create New Proposal</h2>
+          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-700">
+            <h2 className="text-lg sm:text-xl lg:text-2xl font-bold font-tech text-white">Create New Proposal</h2>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg hover:bg-slate-700/50 transition-colors"
+              className="p-1.5 sm:p-2 rounded-lg hover:bg-slate-700/50 transition-colors"
             >
-              <X size={20} className="text-slate-400" />
+              <X size={18} className="sm:w-5 sm:h-5 text-slate-400" />
             </button>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
             {error && (
               <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4 flex items-start gap-3">
                 <AlertCircle className="text-red-400 flex-shrink-0 mt-0.5" size={20} />
@@ -115,7 +115,7 @@ export default function CreateProposalModal({ isOpen, onClose, onProposalCreated
 
             {/* Title */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-xs sm:text-sm font-medium text-slate-300 mb-1.5 sm:mb-2">
                 Proposal Title
               </label>
               <input
@@ -123,14 +123,14 @@ export default function CreateProposalModal({ isOpen, onClose, onProposalCreated
                 required
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 transition-colors"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 transition-colors text-sm sm:text-base"
                 placeholder="Enter a clear, concise title"
               />
             </div>
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-xs sm:text-sm font-medium text-slate-300 mb-1.5 sm:mb-2">
                 Description
               </label>
               <textarea
@@ -138,20 +138,20 @@ export default function CreateProposalModal({ isOpen, onClose, onProposalCreated
                 rows={4}
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 transition-colors resize-none"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 transition-colors resize-none text-sm sm:text-base"
                 placeholder="Provide detailed information about this proposal"
               />
             </div>
 
             {/* Category */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-xs sm:text-sm font-medium text-slate-300 mb-1.5 sm:mb-2">
                 Category
               </label>
               <select
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value as ProposalCategory })}
-                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-cyan-500 transition-colors"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-cyan-500 transition-colors text-sm sm:text-base"
               >
                 {categories.map((cat) => (
                   <option key={cat.value} value={cat.value}>
@@ -163,7 +163,7 @@ export default function CreateProposalModal({ isOpen, onClose, onProposalCreated
 
             {/* Votes Required */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-xs sm:text-sm font-medium text-slate-300 mb-1.5 sm:mb-2">
                 Votes Required to Pass
               </label>
               <input
@@ -172,17 +172,17 @@ export default function CreateProposalModal({ isOpen, onClose, onProposalCreated
                 min="1"
                 value={formData.votes_required}
                 onChange={(e) => setFormData({ ...formData, votes_required: parseInt(e.target.value) || 1 })}
-                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 transition-colors"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 transition-colors text-sm sm:text-base"
               />
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-[10px] sm:text-xs text-slate-400 mt-1">
                 Minimum number of "For" votes needed for the proposal to pass
               </p>
             </div>
 
             {/* End Date */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-xs sm:text-sm font-medium text-slate-300 mb-1.5 sm:mb-2">
                   End Date
                 </label>
                 <input
@@ -191,11 +191,11 @@ export default function CreateProposalModal({ isOpen, onClose, onProposalCreated
                   min={new Date().toISOString().split('T')[0]}
                   value={formData.end_date}
                   onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-cyan-500 transition-colors"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-cyan-500 transition-colors text-sm sm:text-base"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-xs sm:text-sm font-medium text-slate-300 mb-1.5 sm:mb-2">
                   End Time
                 </label>
                 <input
@@ -203,26 +203,26 @@ export default function CreateProposalModal({ isOpen, onClose, onProposalCreated
                   required
                   value={formData.end_time}
                   onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-cyan-500 transition-colors"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-cyan-500 transition-colors text-sm sm:text-base"
                 />
               </div>
             </div>
 
             {/* Actions */}
-            <div className="flex gap-4 pt-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-2 sm:pt-4">
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
               >
                 {loading ? (
                   <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Creating...
                   </>
                 ) : (
                   <>
-                    <Plus size={20} />
+                    <Plus size={18} className="sm:w-5 sm:h-5" />
                     Create Proposal
                   </>
                 )}
@@ -230,7 +230,7 @@ export default function CreateProposalModal({ isOpen, onClose, onProposalCreated
               <button
                 type="button"
                 onClick={onClose}
-                className="px-6 py-3 bg-slate-700/50 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors"
+                className="px-4 sm:px-6 py-2.5 sm:py-3 bg-slate-700/50 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors text-sm sm:text-base"
               >
                 Cancel
               </button>

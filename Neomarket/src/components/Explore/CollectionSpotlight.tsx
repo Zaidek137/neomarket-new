@@ -34,7 +34,7 @@ interface CollectionModal {
 type SlideModal = EkoLaunchModal | CollectionModal;
 
 export default function CollectionSpotlight() {
-  const [currentSlide, setCurrentSlide] = useState(0);
+  const [currentSlide] = useState(0);
   const [showCrossmintModal, setShowCrossmintModal] = useState(false);
   const navigate = useNavigate();
 
@@ -49,8 +49,7 @@ export default function CollectionSpotlight() {
       image: 'https://zrolrdnymkkdcyksuctq.supabase.co/storage/v1/object/public/Gallery/Main%20Scavenjer.png',
       backgroundImage: 'https://zrolrdnymkkdcyksuctq.supabase.co/storage/v1/object/public/Gallery/Homepage%20Images/Collection%20BG.png', // You can replace this with a custom 2:1 background image
       price: 29.55,
-      totalSupply: 9000,
-      minted: 1250
+      totalSupply: 9000
     }
   ];
 
@@ -59,7 +58,7 @@ export default function CollectionSpotlight() {
 
 
   const renderEkoLaunchModal = (slide: EkoLaunchModal) => (
-    <div className="relative h-[280px] w-full overflow-hidden rounded-xl">
+    <div className="relative h-[200px] sm:h-[240px] lg:h-[280px] w-full overflow-hidden rounded-xl">
       {/* Background Image with 2:1 aspect ratio */}
       <div className="absolute inset-0">
         <img
@@ -72,44 +71,56 @@ export default function CollectionSpotlight() {
       </div>
 
       {/* Content Overlays */}
-      <div className="absolute inset-0 flex items-center p-4 lg:p-6">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4 lg:gap-6 w-full">
+      <div className="absolute inset-0 flex items-center p-3 sm:p-4 lg:p-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 lg:gap-6 w-full">
           
           {/* Left: Title and Description Box */}
-          <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg p-3 lg:p-4 border border-slate-700/50 w-full lg:max-w-md">
-            <h2 className="text-lg lg:text-xl font-bold text-white mb-1">{slide.title}</h2>
-            <p className="text-cyan-400 font-medium text-xs lg:text-sm mb-1 lg:mb-2">{slide.subtitle}</p>
-            <p className="text-slate-300 text-xs lg:text-sm leading-relaxed line-clamp-2 hidden lg:block">{slide.description}</p>
+          <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg p-2.5 sm:p-3 lg:p-4 border border-slate-700/50 w-full sm:max-w-xs lg:max-w-md">
+            <h2 className="text-sm sm:text-base lg:text-xl font-bold text-white mb-0.5 sm:mb-1">{slide.title}</h2>
+            <p className="text-cyan-400 font-medium text-[10px] sm:text-xs lg:text-sm mb-0.5 sm:mb-1 lg:mb-2">{slide.subtitle}</p>
+            <p className="text-slate-300 text-[10px] sm:text-xs lg:text-sm leading-relaxed line-clamp-2 hidden sm:block">{slide.description}</p>
           </div>
 
           {/* Center: Stats Boxes */}
-          <div className="flex gap-2 lg:gap-3">
-            <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg p-2 lg:p-3 border border-slate-700/50 text-center min-w-[80px] lg:min-w-[100px]">
-              <div className="text-[10px] lg:text-xs text-slate-400">Price</div>
-              <div className="text-base lg:text-lg font-bold text-white">${slide.price}</div>
+          <div className="flex gap-1.5 sm:gap-2 lg:gap-3">
+            <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg p-1.5 sm:p-2 lg:p-3 border border-slate-700/50 text-center min-w-[60px] sm:min-w-[80px] lg:min-w-[100px]">
+              <div className="text-[9px] sm:text-[10px] lg:text-xs text-slate-400">Price</div>
+              <div className="text-sm sm:text-base lg:text-lg font-bold text-white">${slide.price}</div>
             </div>
-            <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg p-2 lg:p-3 border border-slate-700/50 text-center min-w-[80px] lg:min-w-[100px]">
-              <div className="text-[10px] lg:text-xs text-slate-400">Supply</div>
-              <div className="text-base lg:text-lg font-bold text-white">{slide.totalSupply.toLocaleString()}</div>
+            <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg p-1.5 sm:p-2 lg:p-3 border border-slate-700/50 text-center min-w-[60px] sm:min-w-[80px] lg:min-w-[100px]">
+              <div className="text-[9px] sm:text-[10px] lg:text-xs text-slate-400">Supply</div>
+              <div className="text-sm sm:text-base lg:text-lg font-bold text-white">{slide.totalSupply.toLocaleString()}</div>
             </div>
           </div>
 
-          {/* Right: Action Button */}
-          <div className="w-full lg:w-auto lg:ml-auto">
+          {/* Right: Action Button - Hidden on mobile, shown on larger screens */}
+          <div className="hidden sm:block w-full sm:w-auto sm:ml-auto">
             <button 
               onClick={() => setShowCrossmintModal(true)}
-              className="w-full lg:w-auto bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-black px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 shadow-lg text-sm lg:text-base"
+              className="w-full sm:w-auto bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-black px-3 sm:px-4 lg:px-6 py-1.5 sm:py-2 lg:py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-1.5 sm:gap-2 shadow-lg text-xs sm:text-sm lg:text-base"
             >
-              <ShoppingCart size={16} className="lg:w-[18px] lg:h-[18px]" />
-              Click to Buy an Eko now!
+              <ShoppingCart size={14} className="sm:w-[16px] sm:h-[16px] lg:w-[18px] lg:h-[18px]" />
+              <span className="hidden sm:inline">Click to Buy an Eko now!</span>
+              <span className="sm:hidden">Buy Now</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* Badge */}
-      <div className="absolute top-4 left-4 bg-cyan-500/90 backdrop-blur-sm px-3 py-1 rounded-full">
-        <span className="text-white font-medium text-xs">🚀 New Launch</span>
+      <div className="absolute top-2 sm:top-3 lg:top-4 left-2 sm:left-3 lg:left-4 bg-cyan-500/90 backdrop-blur-sm px-2 sm:px-3 py-0.5 sm:py-1 rounded-full">
+        <span className="text-white font-medium text-[10px] sm:text-xs">🚀 New Launch</span>
+      </div>
+
+      {/* Mobile Buy Button - Positioned at bottom */}
+      <div className="sm:hidden absolute bottom-3 left-3 right-3">
+        <button 
+          onClick={() => setShowCrossmintModal(true)}
+          className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-black px-3 py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-1.5 shadow-lg text-xs"
+        >
+          <ShoppingCart size={14} />
+          Buy Now
+        </button>
       </div>
     </div>
   );
@@ -154,7 +165,7 @@ export default function CollectionSpotlight() {
         <div className="grid grid-cols-2 gap-2 my-4">
           <div className="bg-slate-800/50 rounded p-2 border border-slate-600/50 text-center">
             <div className="text-xs text-slate-400">Average Price</div>
-            <div className="text-sm font-bold text-white">{slide.stats.averagePrice}</div>
+            <div className="text-sm font-bold text-white">{slide.stats.floorPrice}</div>
           </div>
           <div className="bg-slate-800/50 rounded p-2 border border-slate-600/50 text-center">
             <div className="text-xs text-slate-400">Items</div>

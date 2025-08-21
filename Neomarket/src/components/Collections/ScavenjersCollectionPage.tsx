@@ -10,21 +10,19 @@ import {
   X, 
   Check, 
   Badge,
-  ArrowLeft,
   Heart,
-  Share2,
   ShoppingCart,
-  Eye,
-  Filter
+  Eye
 } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 
 // IPFS helper function
-function ipfsToHttp(url: string) {
+function ipfsToHttp(url: string, gateway: 'ipfs.io' | 'cloudflare' = 'ipfs.io') {
   if (!url) return '';
   if (url.startsWith('ipfs://')) {
-    return url.replace('ipfs://', 'https://ipfs.io/ipfs/');
+    const base = gateway === 'ipfs.io' ? 'https://ipfs.io/ipfs/' : 'https://cloudflare-ipfs.com/ipfs/';
+    return url.replace('ipfs://', base);
   }
   return url;
 }
@@ -67,35 +65,6 @@ const collectionInfo: CollectionInfo = {
   verified: true,
   creator: 'NeoMarket'
 };
-
-interface FilterSectionProps {
-  title: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-}
-
-function FilterSection({ title, children, defaultOpen = true }: FilterSectionProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  return (
-    <div className="border-b border-slate-700/50 pb-4 mb-4 last:border-b-0 last:pb-0 last:mb-0">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between w-full text-left mb-3 hover:text-cyan-300 transition-colors"
-      >
-        <span className="text-sm font-semibold text-white">{title}</span>
-        <ChevronDown 
-          size={16} 
-          className={cn(
-            "text-slate-400 transition-transform duration-200",
-            isOpen && "rotate-180"
-          )} 
-        />
-      </button>
-      {isOpen && children}
-    </div>
-  );
-}
 
 function TraitsFilter({ 
   collectionTraits, 
@@ -231,9 +200,11 @@ function TraitsFilter({
   );
 }
 
-function NFTCard({ nft, viewMode, onClick }: { nft: NFT; viewMode: 'grid' | 'list'; onClick: () => void }) {
+const NFTCard = React.memo(function NFTCard({ nft, viewMode, onClick, priority = false }: { nft: NFT; viewMode: 'grid' | 'list'; onClick: () => void; priority?: boolean }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [gatewayTried, setGatewayTried] = useState<'ipfs.io' | 'cloudflare'>('ipfs.io');
+  const [srcUrl, setSrcUrl] = useState<string>(ipfsToHttp(nft.image, 'ipfs.io'));
 
   if (viewMode === 'list') {
     return (
@@ -249,14 +220,26 @@ function NFTCard({ nft, viewMode, onClick }: { nft: NFT; viewMode: 'grid' | 'lis
             )}
             {!imageError && (
               <img
-                src={ipfsToHttp(nft.image)}
+                src={srcUrl}
                 alt={nft.name}
                 className={cn(
                   "w-full h-full object-cover group-hover:scale-110 transition-transform duration-300",
                   imageLoaded ? "opacity-100" : "opacity-0"
                 )}
+                loading={priority ? 'eager' : 'lazy'}
+                decoding="async"
+                fetchPriority={priority ? ('high' as any) : ('auto' as any)}
+                width={256}
+                height={256}
                 onLoad={() => setImageLoaded(true)}
-                onError={() => setImageError(true)}
+                onError={() => {
+                  if (gatewayTried === 'ipfs.io') {
+                    setGatewayTried('cloudflare');
+                    setSrcUrl(ipfsToHttp(nft.image, 'cloudflare'));
+                  } else {
+                    setImageError(true);
+                  }
+                }}
               />
             )}
             {imageError && (
@@ -297,6 +280,7 @@ function NFTCard({ nft, viewMode, onClick }: { nft: NFT; viewMode: 'grid' | 'lis
       animate={{ opacity: 1, y: 0 }}
       onClick={onClick}
       className="group cursor-pointer bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl overflow-hidden hover:bg-slate-700/30 hover:border-slate-600/50 hover:scale-105 transition-all duration-300"
+      style={{ contentVisibility: 'auto' as any, containIntrinsicSize: '256px' as any }}
     >
       {/* NFT Image */}
       <div className="relative aspect-square overflow-hidden">
@@ -305,14 +289,26 @@ function NFTCard({ nft, viewMode, onClick }: { nft: NFT; viewMode: 'grid' | 'lis
         )}
         {!imageError && (
           <img
-            src={ipfsToHttp(nft.image)}
+            src={srcUrl}
             alt={nft.name}
             className={cn(
               "w-full h-full object-cover group-hover:scale-110 transition-transform duration-500",
               imageLoaded ? "opacity-100" : "opacity-0"
             )}
+            loading={priority ? 'eager' : 'lazy'}
+            decoding="async"
+            fetchPriority={priority ? ('high' as any) : ('auto' as any)}
+            width={512}
+            height={512}
             onLoad={() => setImageLoaded(true)}
-            onError={() => setImageError(true)}
+            onError={() => {
+              if (gatewayTried === 'ipfs.io') {
+                setGatewayTried('cloudflare');
+                setSrcUrl(ipfsToHttp(nft.image, 'cloudflare'));
+              } else {
+                setImageError(true);
+              }
+            }}
           />
         )}
         {imageError && (
@@ -352,10 +348,10 @@ function NFTCard({ nft, viewMode, onClick }: { nft: NFT; viewMode: 'grid' | 'lis
       </div>
     </motion.div>
   );
-}
+});
 
 export default function ScavenjersCollectionPage() {
-  const { id } = useParams();
+  useParams();
   const [allNFTs, setAllNFTs] = useState<NFT[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -363,7 +359,8 @@ export default function ScavenjersCollectionPage() {
   const [showFilters, setShowFilters] = useState(true);
   const [selectedTraits, setSelectedTraits] = useState<{ [trait: string]: Set<string> }>({});
   const [selectedNFT, setSelectedNFT] = useState<NFT | null>(null);
-  const [visibleCount, setVisibleCount] = useState(50);
+  const [page, setPage] = useState(1);
+  const pageSize = 60;
   const [activeTab, setActiveTab] = useState<'explore' | 'exchange' | 'holders' | 'about'>('explore');
 
   // Load NFT metadata
@@ -434,6 +431,31 @@ export default function ScavenjersCollectionPage() {
 
     return filtered;
   }, [allNFTs, searchQuery, selectedTraits]);
+
+  // Reset page on filter/search change
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, JSON.stringify(selectedTraits)]);
+
+  // Current page slice
+  const paginatedNFTs = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredNFTs.slice(start, start + pageSize);
+  }, [filteredNFTs, page]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredNFTs.length / pageSize));
+
+  // Preload a subset of next page images
+  useEffect(() => {
+    const start = page * pageSize;
+    const nextBatch = filteredNFTs.slice(start, start + 24);
+    nextBatch.forEach(n => {
+      const img = new Image();
+      img.loading = 'eager';
+      img.decoding = 'async' as any;
+      img.src = ipfsToHttp(n.image);
+    });
+  }, [page, filteredNFTs]);
 
   if (loading) {
     return (
@@ -587,36 +609,55 @@ export default function ScavenjersCollectionPage() {
                 <div>
                   {viewMode === 'grid' ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-                      {filteredNFTs.slice(0, visibleCount).map((nft) => (
+                      {paginatedNFTs.map((nft, i) => (
                         <NFTCard
                           key={nft.id}
                           nft={nft}
                           viewMode={viewMode}
                           onClick={() => setSelectedNFT(nft)}
+                          priority={i < 6}
                         />
                       ))}
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {filteredNFTs.slice(0, visibleCount).map((nft) => (
+                      {paginatedNFTs.map((nft, i) => (
                         <NFTCard
                           key={nft.id}
                           nft={nft}
                           viewMode={viewMode}
                           onClick={() => setSelectedNFT(nft)}
+                          priority={i < 6}
                         />
                       ))}
                     </div>
                   )}
 
-                  {/* Load More Button */}
-                  {visibleCount < filteredNFTs.length && (
-                    <div className="flex justify-center pt-8">
+                  {/* Pagination Controls */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-center gap-2 pt-6">
                       <button
-                        onClick={() => setVisibleCount(prev => prev + 50)}
-                        className="px-6 py-2 bg-slate-700/50 text-white rounded-lg font-medium hover:bg-slate-600/50 transition-all duration-300 text-sm"
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                        className={cn(
+                          "px-3 py-2 rounded-lg text-sm",
+                          page === 1 ? "bg-slate-800/40 text-slate-500 cursor-not-allowed" : "bg-slate-700/50 hover:bg-slate-600/50 text-white"
+                        )}
                       >
-                        Load More ({filteredNFTs.length - visibleCount})
+                        Prev
+                      </button>
+                      <span className="text-slate-400 text-sm">
+                        Page <span className="text-white">{page}</span> of <span className="text-white">{totalPages}</span>
+                      </span>
+                      <button
+                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                        disabled={page === totalPages}
+                        className={cn(
+                          "px-3 py-2 rounded-lg text-sm",
+                          page === totalPages ? "bg-slate-800/40 text-slate-500 cursor-not-allowed" : "bg-slate-700/50 hover:bg-slate-600/50 text-white"
+                        )}
+                      >
+                        Next
                       </button>
                     </div>
                   )}

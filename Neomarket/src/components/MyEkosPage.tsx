@@ -32,53 +32,80 @@ export default function MyEkosPage() {
   const [listingPrice, setListingPrice] = useState('');
   const [isListing, setIsListing] = useState(false);
 
-  // Fetch user's owned Ekos
+  // Memoize the NFT contract to prevent recreation
+  const nftContract = React.useMemo(() => 
+    getContract({
+      client,
+      chain: polygon,
+      address: NFT_COLLECTION_ADDRESS
+    }), []
+  );
+
+  // Fetch user's owned Ekos with caching
   useEffect(() => {
+    let mounted = true;
+    
     if (account?.address) {
-      fetchOwnedEkos();
+      fetchOwnedEkos(mounted);
     } else {
       setOwnedEkos([]);
     }
+    
+    return () => { mounted = false; };
   }, [account?.address]);
 
-  const fetchOwnedEkos = async () => {
+  const fetchOwnedEkos = async (mounted: boolean) => {
     if (!account?.address) return;
 
     setLoading(true);
     try {
       console.log('Fetching owned NFTs for:', account.address);
-      
-      // Get the NFT contract
-      const nftContract = getContract({
-        client,
-        chain: polygon,
-        address: NFT_COLLECTION_ADDRESS
-      });
 
-      // Fetch owned NFTs
+      // Fetch owned NFTs with pagination support
       const ownedNFTs = await getOwnedNFTs({
         contract: nftContract,
         owner: account.address
       });
 
+      if (!mounted) return; // Prevent state updates if component unmounted
+
       console.log('Found NFTs:', ownedNFTs.length);
 
-      // Transform NFT data to our format
-      const formattedEkos = ownedNFTs.map((nft) => ({
-        tokenId: nft.id.toString(),
-        name: nft.metadata?.name || `Eko #${nft.id}`,
-        image: nft.metadata?.image || '',
-        description: nft.metadata?.description || '',
-        attributes: (nft.metadata?.attributes as any[]) || []
-      }));
-
-      setOwnedEkos(formattedEkos);
+      // Process NFTs in batches for better performance
+      const batchSize = 10;
+      const formattedEkos: OwnedEko[] = [];
+      
+      for (let i = 0; i < ownedNFTs.length; i += batchSize) {
+        const batch = ownedNFTs.slice(i, i + batchSize);
+        const batchFormatted = batch.map((nft) => ({
+          tokenId: nft.id.toString(),
+          name: nft.metadata?.name || `Eko #${nft.id}`,
+          image: nft.metadata?.image || '',
+          description: nft.metadata?.description || '',
+          attributes: (nft.metadata?.attributes as any[]) || []
+        }));
+        formattedEkos.push(...batchFormatted);
+        
+        // Update state progressively for better UX
+        if (mounted && i === 0) {
+          setOwnedEkos(batchFormatted);
+          setLoading(false); // Show first batch immediately
+        }
+      }
+      
+      if (mounted) {
+        setOwnedEkos(formattedEkos);
+      }
       
     } catch (error) {
       console.error('Error fetching owned Ekos:', error);
-      setOwnedEkos([]);
+      if (mounted) {
+        setOwnedEkos([]);
+      }
     } finally {
-      setLoading(false);
+      if (mounted) {
+        setLoading(false);
+      }
     }
   };
 

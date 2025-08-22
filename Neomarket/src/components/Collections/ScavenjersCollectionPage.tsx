@@ -231,82 +231,7 @@ const LoadingSpinner = ({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) => {
   );
 };
 
-// Virtual grid component for performance
-const VirtualGrid = ({ 
-  items, 
-  renderItem, 
-  containerHeight = 600,
-  itemHeight = 320,
-  itemsPerRow = 6,
-  gap = 16 
-}: {
-  items: any[];
-  renderItem: (item: any, index: number) => React.ReactNode;
-  containerHeight?: number;
-  itemHeight?: number;
-  itemsPerRow?: number;
-  gap?: number;
-}) => {
-  const [scrollTop, setScrollTop] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-  
-  const totalRows = Math.ceil(items.length / itemsPerRow);
-  const totalHeight = totalRows * (itemHeight + gap);
-  
-  const visibleStart = Math.floor(scrollTop / (itemHeight + gap));
-  const visibleEnd = Math.min(
-    totalRows,
-    Math.ceil((scrollTop + containerHeight) / (itemHeight + gap)) + 1
-  );
-  
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    setScrollTop(e.currentTarget.scrollTop);
-  }, []);
-  
-  const visibleItems = useMemo(() => {
-    const result = [];
-    for (let row = visibleStart; row < visibleEnd; row++) {
-      const startIndex = row * itemsPerRow;
-      const endIndex = Math.min(startIndex + itemsPerRow, items.length);
-      for (let i = startIndex; i < endIndex; i++) {
-        result.push({
-          item: items[i],
-          index: i,
-          row,
-          col: i % itemsPerRow,
-          top: row * (itemHeight + gap)
-        });
-      }
-    }
-    return result;
-  }, [items, visibleStart, visibleEnd, itemsPerRow, itemHeight, gap]);
-  
-  return (
-    <div 
-      ref={containerRef}
-      className="overflow-auto"
-      style={{ height: containerHeight }}
-      onScroll={handleScroll}
-    >
-      <div style={{ height: totalHeight, position: 'relative' }}>
-        {visibleItems.map(({ item, index, top, col }) => (
-          <div
-            key={`${item.id}-${index}`}
-            style={{
-              position: 'absolute',
-              top,
-              left: col * (100 / itemsPerRow) + '%',
-              width: `calc(${100 / itemsPerRow}% - ${gap}px)`,
-              height: itemHeight
-            }}
-          >
-            {renderItem(item, index)}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
+
 
 const NFTCard = React.memo(function NFTCard({ nft, viewMode, onClick, priority = false }: { nft: NFT; viewMode: 'grid' | 'list'; onClick: () => void; priority?: boolean }) {
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -481,9 +406,8 @@ export default function ScavenjersCollectionPage() {
   const [selectedTraits, setSelectedTraits] = useState<{ [trait: string]: Set<string> }>({});
   const [selectedNFT, setSelectedNFT] = useState<NFT | null>(null);
   const [activeTab, setActiveTab] = useState<'explore' | 'exchange' | 'holders' | 'about'>('explore');
-  const [containerHeight, setContainerHeight] = useState(600);
-  const [itemsPerRow, setItemsPerRow] = useState(6);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [visibleCount, setVisibleCount] = useState(24); // Start with 24 items
+  const [loadingMore, setLoadingMore] = useState(false);
   
   // Performance optimization: Pre-compute trait maps for faster filtering
   const nftTraitMaps = useMemo(() => {
@@ -493,31 +417,6 @@ export default function ScavenjersCollectionPage() {
       searchText: nft.name.toLowerCase()
     }));
   }, [allNFTs]);
-
-  // Responsive grid calculations
-  useEffect(() => {
-    const updateLayout = () => {
-      if (containerRef.current) {
-        const container = containerRef.current;
-        const containerWidth = container.offsetWidth;
-        const availableHeight = window.innerHeight - container.getBoundingClientRect().top - 100;
-        
-        setContainerHeight(Math.max(400, availableHeight));
-        
-        // Calculate items per row based on screen width
-        if (containerWidth >= 1536) setItemsPerRow(6); // 2xl
-        else if (containerWidth >= 1280) setItemsPerRow(5); // xl
-        else if (containerWidth >= 1024) setItemsPerRow(4); // lg
-        else if (containerWidth >= 768) setItemsPerRow(3); // md
-        else if (containerWidth >= 640) setItemsPerRow(2); // sm
-        else setItemsPerRow(1); // mobile
-      }
-    };
-
-    updateLayout();
-    window.addEventListener('resize', updateLayout);
-    return () => window.removeEventListener('resize', updateLayout);
-  }, [showFilters]);
 
   // Load NFT metadata
   useEffect(() => {
@@ -578,6 +477,11 @@ export default function ScavenjersCollectionPage() {
     };
   }, [searchQuery]);
 
+  // Reset visible count when filters change
+  useEffect(() => {
+    setVisibleCount(24);
+  }, [debouncedSearchQuery, selectedTraits]);
+
   // Optimized filter function with better performance
   const filteredNFTs = useMemo(() => {
     setFiltering(true);
@@ -606,16 +510,19 @@ export default function ScavenjersCollectionPage() {
     return filtered.map(item => item.nft);
   }, [nftTraitMaps, debouncedSearchQuery, selectedTraits]);
 
-  // NFT card renderer for virtual grid
-  const renderNFTCard = useCallback((nft: NFT, index: number) => (
-    <NFTCard
-      key={nft.id}
-      nft={nft}
-      viewMode={viewMode}
-      onClick={() => setSelectedNFT(nft)}
-      priority={index < 20} // Prioritize first 20 items
-    />
-  ), [viewMode, setSelectedNFT]);
+  // Get visible NFTs based on current visible count
+  const visibleNFTs = useMemo(() => {
+    return filteredNFTs.slice(0, visibleCount);
+  }, [filteredNFTs, visibleCount]);
+
+  // Load more function
+  const handleLoadMore = useCallback(async () => {
+    setLoadingMore(true);
+    // Simulate brief loading for better UX
+    await new Promise(resolve => setTimeout(resolve, 300));
+    setVisibleCount(prev => Math.min(prev + 24, filteredNFTs.length));
+    setLoadingMore(false);
+  }, [filteredNFTs.length]);
 
   if (loading) {
     return (
@@ -761,7 +668,7 @@ export default function ScavenjersCollectionPage() {
         )}
 
         {/* Tab Content */}
-        <div ref={containerRef} className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-y-auto scrollbar-hide">
           {activeTab === 'exchange' && (
             <ExchangePage />
           )}
@@ -769,7 +676,7 @@ export default function ScavenjersCollectionPage() {
           {activeTab === 'explore' && (
             <>
               {filteredNFTs.length > 0 ? (
-                <div className="relative h-full">
+                <div className="relative">
                   {/* Filtering overlay */}
                   {filtering && (
                     <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-xl">
@@ -781,26 +688,55 @@ export default function ScavenjersCollectionPage() {
                   )}
                   
                   {viewMode === 'grid' ? (
-                    <VirtualGrid
-                      items={filteredNFTs}
-                      renderItem={renderNFTCard}
-                      containerHeight={containerHeight}
-                      itemHeight={320}
-                      itemsPerRow={itemsPerRow}
-                      gap={16}
-                    />
-                  ) : (
-                    // For list view, use simpler virtual scrolling since items are uniform
-                    <div className="space-y-2 overflow-auto" style={{ height: containerHeight }}>
-                      {filteredNFTs.map((nft, i) => (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                      {visibleNFTs.map((nft, i) => (
                         <NFTCard
                           key={nft.id}
                           nft={nft}
                           viewMode={viewMode}
                           onClick={() => setSelectedNFT(nft)}
-                          priority={i < 20}
+                          priority={i < 12} // First 12 items get priority loading
                         />
                       ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {visibleNFTs.map((nft, i) => (
+                        <NFTCard
+                          key={nft.id}
+                          nft={nft}
+                          viewMode={viewMode}
+                          onClick={() => setSelectedNFT(nft)}
+                          priority={i < 12}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Load More Button */}
+                  {visibleCount < filteredNFTs.length && (
+                    <div className="flex justify-center pt-8 pb-4">
+                      <button
+                        onClick={handleLoadMore}
+                        disabled={loadingMore}
+                        className={cn(
+                          "px-6 py-3 rounded-lg font-medium transition-all duration-300 flex items-center gap-2",
+                          loadingMore 
+                            ? "bg-slate-700/50 text-slate-400 cursor-not-allowed"
+                            : "bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white shadow-lg hover:shadow-xl"
+                        )}
+                      >
+                        {loadingMore ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Loading More Ekos...
+                          </>
+                        ) : (
+                          <>
+                            Load More ({filteredNFTs.length - visibleCount} remaining)
+                          </>
+                        )}
+                      </button>
                     </div>
                   )}
                 </div>

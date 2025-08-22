@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Users, Trophy, Vote, Zap, Eye } from 'lucide-react';
+import { X, Users, Trophy, Vote, Zap, Eye, Plus, Minus } from 'lucide-react';
 import { useActiveAccount, ConnectButton } from 'thirdweb/react';
 import { CrossmintProvider, CrossmintHostedCheckout } from "@crossmint/client-sdk-react-ui";
 import { createThirdwebClient } from 'thirdweb';
@@ -22,6 +22,16 @@ export default function IntroEkoModal({ isOpen, onClose }: IntroEkoModalProps) {
   const account = useActiveAccount();
   const address = account?.address;
   const navigate = useNavigate();
+  const [purchaseQuantity, setPurchaseQuantity] = useState(1);
+
+  // Purchase quantity handlers
+  const incrementQuantity = useCallback(() => {
+    setPurchaseQuantity(prev => Math.min(prev + 1, 10));
+  }, []);
+
+  const decrementQuantity = useCallback(() => {
+    setPurchaseQuantity(prev => Math.max(prev - 1, 1));
+  }, []);
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -72,7 +82,7 @@ export default function IntroEkoModal({ isOpen, onClose }: IntroEkoModalProps) {
                 
                 {/* Description */}
                 <p className="text-slate-300 text-sm sm:text-base lg:text-lg leading-relaxed max-w-2xl mx-auto mb-4 sm:mb-6 lg:mb-8"> 
-                  Your journey starts here with our exclusive Intro Collection.
+                  Your journey starts here with our massive 9,000 Eko collection. Each Eko is unique with randomized traits and abilities.
                 </p>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
@@ -90,7 +100,8 @@ export default function IntroEkoModal({ isOpen, onClose }: IntroEkoModalProps) {
                     
                     {/* Price Badge */}
                     <div className="absolute top-2 left-2 sm:top-3 sm:left-3 lg:top-4 lg:left-4 bg-yellow-500/90 backdrop-blur-sm text-black px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg font-bold text-xs sm:text-sm border border-yellow-400">
-                      $29.55 USD
+                      ~$19 USD
+                      <div className="text-[9px] font-normal">Est. Price</div>
                     </div>
                   </div>
 
@@ -156,10 +167,44 @@ export default function IntroEkoModal({ isOpen, onClose }: IntroEkoModalProps) {
 
                   {/* Purchase Section */}
                   <div className="bg-gradient-to-r from-yellow-900/20 to-yellow-800/20 rounded-lg sm:rounded-xl p-4 sm:p-6 border border-yellow-500/30">
-                    <h4 className="text-base sm:text-lg font-bold font-tech text-white mb-2 sm:mb-3 text-center">Get Your Eko Now</h4>
+                    <h4 className="text-base sm:text-lg font-bold font-tech text-white mb-2 sm:mb-3 text-center">Get Your Eko{purchaseQuantity > 1 ? 's' : ''} Now</h4>
                     <p className="text-slate-300 text-xs sm:text-sm text-center mb-3 sm:mb-4">
-                      Purchase with crypto or card. Randomized Eko from the collection.
+                      Purchase with crypto or card. Get {purchaseQuantity > 1 ? `${purchaseQuantity} randomized Ekos` : 'a randomized Eko'} from 9,000 unique collectibles.
                     </p>
+                    
+                    {/* Quantity Selector */}
+                    <div className="flex items-center justify-center gap-3 mb-4">
+                      <span className="text-slate-300 text-sm">Quantity:</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={decrementQuantity}
+                          disabled={purchaseQuantity <= 1}
+                          className="w-8 h-8 rounded bg-slate-700/50 hover:bg-slate-600/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center border border-slate-600/50"
+                        >
+                          <Minus size={14} className="text-white" />
+                        </button>
+                        <div className="w-12 text-center">
+                          <span className="text-lg font-bold text-white">{purchaseQuantity}</span>
+                        </div>
+                        <button
+                          onClick={incrementQuantity}
+                          disabled={purchaseQuantity >= 10}
+                          className="w-8 h-8 rounded bg-slate-700/50 hover:bg-slate-600/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center border border-slate-600/50"
+                        >
+                          <Plus size={14} className="text-white" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Price Display */}
+                    <div className="text-center mb-4">
+                      <div className="text-yellow-400 font-bold text-lg">
+                        Current Est. Price: ${(19 * purchaseQuantity).toFixed(0)} USD
+                      </div>
+                      <div className="text-xs text-slate-400">
+                        Pricing fluctuates based on Polygon network
+                      </div>
+                    </div>
                     
                     {address ? (
                       // Wallet is connected - show Crossmint checkout
@@ -169,8 +214,8 @@ export default function IntroEkoModal({ isOpen, onClose }: IntroEkoModalProps) {
                             lineItems={{
                               collectionLocator: `crossmint:${COLLECTION_ID}`,
                               callData: {
-                                totalPrice: "111",
-                                quantity: 1,
+                                totalPrice: (74 * purchaseQuantity).toString(),
+                                quantity: purchaseQuantity,
                               },
                             }}
                             payment={{ crypto: { enabled: true }, fiat: { enabled: true } }}

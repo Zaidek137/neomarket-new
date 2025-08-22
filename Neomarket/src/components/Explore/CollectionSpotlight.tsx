@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { CheckCircle, Heart, Eye, ShoppingCart } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { CheckCircle, Heart, Eye, ShoppingCart, Plus, Minus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import CrossmintCheckoutModal from '../CrossmintCheckoutModal';
@@ -36,7 +36,21 @@ type SlideModal = EkoLaunchModal | CollectionModal;
 export default function CollectionSpotlight() {
   const [currentSlide] = useState(0);
   const [showCrossmintModal, setShowCrossmintModal] = useState(false);
+  const [purchaseQuantity, setPurchaseQuantity] = useState(1);
   const navigate = useNavigate();
+
+  // Purchase quantity handlers
+  const incrementQuantity = useCallback(() => {
+    setPurchaseQuantity(prev => Math.min(prev + 1, 10));
+  }, []);
+
+  const decrementQuantity = useCallback(() => {
+    setPurchaseQuantity(prev => Math.max(prev - 1, 1));
+  }, []);
+
+  const handlePurchase = useCallback(() => {
+    setShowCrossmintModal(true);
+  }, []);
 
   // Define all slides/modals
   const slides: SlideModal[] = [
@@ -48,7 +62,7 @@ export default function CollectionSpotlight() {
       description: 'The Scavenjers is an intro collection of unique digital avatars for the Scavenjer ecosystem that are used to participate in the Scavenjer ecosystem by allowing you to vote, claim rewards, compete, and more.',
       image: 'https://zrolrdnymkkdcyksuctq.supabase.co/storage/v1/object/public/Gallery/Main%20Scavenjer.png',
       backgroundImage: 'https://zrolrdnymkkdcyksuctq.supabase.co/storage/v1/object/public/Gallery/Homepage%20Images/Collection%20BG.png', // You can replace this with a custom 2:1 background image
-      price: 29.55,
+      price: 19,
       totalSupply: 9000
     }
   ];
@@ -81,11 +95,12 @@ export default function CollectionSpotlight() {
             <p className="text-slate-300 text-[10px] sm:text-xs lg:text-sm leading-relaxed line-clamp-2 hidden sm:block">{slide.description}</p>
           </div>
 
-          {/* Center: Stats Boxes */}
+          {/* Center: Stats */}
           <div className="flex gap-1.5 sm:gap-2 lg:gap-3">
             <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg p-1.5 sm:p-2 lg:p-3 border border-slate-700/50 text-center min-w-[60px] sm:min-w-[80px] lg:min-w-[100px]">
-              <div className="text-[9px] sm:text-[10px] lg:text-xs text-slate-400">Price</div>
+              <div className="text-[9px] sm:text-[10px] lg:text-xs text-slate-400">Est. Price</div>
               <div className="text-sm sm:text-base lg:text-lg font-bold text-white">${slide.price}</div>
+              <div className="text-[8px] sm:text-[9px] text-slate-500">~Polygon</div>
             </div>
             <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg p-1.5 sm:p-2 lg:p-3 border border-slate-700/50 text-center min-w-[60px] sm:min-w-[80px] lg:min-w-[100px]">
               <div className="text-[9px] sm:text-[10px] lg:text-xs text-slate-400">Supply</div>
@@ -93,15 +108,44 @@ export default function CollectionSpotlight() {
             </div>
           </div>
 
+          {/* Center-Right: Quantity Selector - Desktop Only */}
+          <div className="hidden sm:block">
+            <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg p-2 sm:p-3 lg:p-4 border border-slate-700/50 min-w-[120px] lg:min-w-[140px]">
+              <div className="text-[10px] sm:text-xs lg:text-sm text-slate-400 text-center mb-2">Select Quantity</div>
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  onClick={decrementQuantity}
+                  disabled={purchaseQuantity <= 1}
+                  className="w-7 h-7 lg:w-8 lg:h-8 rounded bg-slate-700/50 hover:bg-slate-600/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+                >
+                  <Minus size={12} className="text-white" />
+                </button>
+                <div className="w-8 lg:w-10 text-center">
+                  <span className="text-base lg:text-lg font-bold text-white">{purchaseQuantity}</span>
+                </div>
+                <button
+                  onClick={incrementQuantity}
+                  disabled={purchaseQuantity >= 10}
+                  className="w-7 h-7 lg:w-8 lg:h-8 rounded bg-slate-700/50 hover:bg-slate-600/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+                >
+                  <Plus size={12} className="text-white" />
+                </button>
+              </div>
+              <div className="text-center mt-2">
+                <div className="text-[9px] sm:text-[10px] text-slate-500">Max 10 Ekos</div>
+              </div>
+            </div>
+          </div>
+
           {/* Right: Action Button - Hidden on mobile, shown on larger screens */}
           <div className="hidden sm:block w-full sm:w-auto sm:ml-auto">
             <button 
-              onClick={() => setShowCrossmintModal(true)}
+              onClick={handlePurchase}
               className="w-full sm:w-auto bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-black px-3 sm:px-4 lg:px-6 py-1.5 sm:py-2 lg:py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-1.5 sm:gap-2 shadow-lg text-xs sm:text-sm lg:text-base"
             >
               <ShoppingCart size={14} className="sm:w-[16px] sm:h-[16px] lg:w-[18px] lg:h-[18px]" />
-              <span className="hidden sm:inline">Click to Buy an Eko now!</span>
-              <span className="sm:hidden">Buy Now</span>
+              <span className="hidden lg:inline">Buy {purchaseQuantity} Eko{purchaseQuantity > 1 ? 's' : ''} with Crossmint</span>
+              <span className="lg:hidden">Buy {purchaseQuantity} Eko{purchaseQuantity > 1 ? 's' : ''}</span>
             </button>
           </div>
         </div>
@@ -112,14 +156,36 @@ export default function CollectionSpotlight() {
         <span className="text-white font-medium text-[10px] sm:text-xs">🚀 New Launch</span>
       </div>
 
-      {/* Mobile Buy Button - Positioned at bottom */}
+      {/* Mobile Controls - Positioned at bottom */}
       <div className="sm:hidden absolute bottom-3 left-3 right-3">
+        {/* Mobile Quantity Selector */}
+        <div className="flex items-center justify-center gap-3 mb-2">
+          <span className="text-white text-xs">Quantity:</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={decrementQuantity}
+              disabled={purchaseQuantity <= 1}
+              className="w-7 h-7 rounded bg-slate-700/80 hover:bg-slate-600/80 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            >
+              <Minus size={12} className="text-white" />
+            </button>
+            <span className="text-white font-bold w-6 text-center">{purchaseQuantity}</span>
+            <button
+              onClick={incrementQuantity}
+              disabled={purchaseQuantity >= 10}
+              className="w-7 h-7 rounded bg-slate-700/80 hover:bg-slate-600/80 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            >
+              <Plus size={12} className="text-white" />
+            </button>
+          </div>
+        </div>
+        {/* Mobile Buy Button */}
         <button 
-          onClick={() => setShowCrossmintModal(true)}
+          onClick={handlePurchase}
           className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-black px-3 py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-1.5 shadow-lg text-xs"
         >
           <ShoppingCart size={14} />
-          Buy Now
+          Buy {purchaseQuantity} Eko{purchaseQuantity > 1 ? 's' : ''}
         </button>
       </div>
     </div>
@@ -227,7 +293,8 @@ export default function CollectionSpotlight() {
           isOpen={showCrossmintModal}
           onClose={() => setShowCrossmintModal(false)}
           collectionTitle="The Scavenjers"
-          price={25}
+          price={19 * purchaseQuantity}
+          quantity={purchaseQuantity}
         />
       )}
     </>

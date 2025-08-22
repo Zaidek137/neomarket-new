@@ -86,37 +86,23 @@ export default function ExchangePage() {
           params: [0n, endId]
         });
 
-        // Process listings in batches for better performance
-        const batchSize = 5;
-        const enrichedListings: ListedEko[] = [];
-        let isFirstBatch = true;
-
-        // Create contract instances map to reuse
-        const contractCache = new Map();
-        
-        for (let i = 0; i < allListings.length; i += batchSize) {
-          const batch = allListings.slice(i, i + batchSize);
-          
-          const batchPromises = batch.map(async (listing: any) => {
+        // Enrich with NFT metadata
+        const enrichedListings = await Promise.all(
+          allListings.map(async (listing: any) => {
             try {
-              // Reuse contract instance if already created
-              let nftContract = contractCache.get(listing.assetContract);
-              if (!nftContract) {
-                nftContract = getContract({ 
-                  client, 
-                  chain: polygon, 
-                  address: listing.assetContract 
-                });
-                contractCache.set(listing.assetContract, nftContract);
-              }
-              
+              const nftContract = getContract({ 
+                client, 
+                chain: polygon, 
+                address: listing.assetContract 
+              });
               const nft = await getNFT({ 
                 contract: nftContract, 
                 tokenId: listing.tokenId 
               });
 
               const priceInPol = Number(listing.pricePerToken) / 1e18;
-              const maticPrice = polPrice || 0.85;
+              // Use a fallback price for MATIC if not available
+              const maticPrice = polPrice || 0.85; // Fallback to approximate MATIC price
               const priceInUsd = priceInPol * maticPrice;
 
               return {
@@ -139,21 +125,10 @@ export default function ExchangePage() {
               console.error('Error enriching listing:', error);
               return null;
             }
-          });
+          })
+        );
 
-          const batchResults = await Promise.all(batchPromises);
-          const validResults = batchResults.filter(Boolean) as ListedEko[];
-          enrichedListings.push(...validResults);
-
-          // Show first batch immediately for better perceived performance
-          if (isFirstBatch && validResults.length > 0) {
-            setListings(validResults);
-            setLoading(false);
-            isFirstBatch = false;
-          }
-        }
-
-        setListings(enrichedListings);
+        setListings(enrichedListings.filter(Boolean) as ListedEko[]);
       } catch (error) {
         console.error('Error fetching listings:', error);
       } finally {

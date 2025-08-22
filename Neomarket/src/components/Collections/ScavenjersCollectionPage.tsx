@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ExchangePage from '../Exchange/ExchangePage';
+import CrossmintCheckoutModal from '../CrossmintCheckoutModal';
 import { 
   Search, 
   SlidersHorizontal, 
@@ -13,7 +14,9 @@ import {
   Heart,
   ShoppingCart,
   Eye,
-  Loader2
+  Loader2,
+  Minus,
+  Plus
 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { cn } from '../../lib/utils';
@@ -52,15 +55,15 @@ interface CollectionInfo {
 
 const collectionInfo: CollectionInfo = {
   name: 'The Scavenjers',
-  description: 'A collection of unique digital collectibles exploring the post-apocalyptic world of Eko.',
+  description: 'Intro Eko collection to the Scavenjer ecosystem. A massive collection of unique digital collectibles exploring the post-apocalyptic world.',
   image: 'https://zrolrdnymkkdcyksuctq.supabase.co/storage/v1/object/public/Gallery/Main%20Scavenjer.png',
   bannerImage: 'https://ik.imagekit.io/q9x52ygvo/banner-scavenjers.png',
-  totalSupply: 9,
+  totalSupply: 9000,
   floorPrice: 0.15,
   totalVolume: 2847,
-  owners: 3,
+  owners: 1500, // Estimated based on larger collection
   verified: true,
-  creator: 'NeoMarket'
+  creator: 'Scavenjer'
 };
 
 // Memoized trait option component to prevent unnecessary re-renders
@@ -77,7 +80,9 @@ const TraitOption = React.memo(({
   isSelected: boolean;
   onToggle: (trait: string, value: string) => void;
 }) => {
-  const handleToggle = useCallback(() => {
+  const handleToggle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     onToggle(trait, value);
   }, [trait, value, onToggle]);
 
@@ -125,7 +130,9 @@ const TraitCategory = React.memo(({
   onToggleCategory: (trait: string) => void;
   onToggleTrait: (trait: string, value: string) => void;
 }) => {
-  const handleToggleCategory = useCallback(() => {
+  const handleToggleCategory = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     onToggleCategory(trait);
   }, [trait, onToggleCategory]);
 
@@ -138,7 +145,8 @@ const TraitCategory = React.memo(({
     <div className="pb-2">
       <button
         onClick={handleToggleCategory}
-        className="flex items-center justify-between w-full text-left mb-2 hover:text-cyan-300 transition-colors"
+        className="flex items-center justify-between w-full text-left mb-2 hover:text-cyan-300 transition-colors focus:outline-none"
+        type="button"
       >
         <span className="text-sm font-medium text-white">{trait}</span>
         <ChevronDown 
@@ -158,6 +166,7 @@ const TraitCategory = React.memo(({
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2, ease: 'easeInOut' }}
             className="overflow-hidden"
+            style={{ willChange: 'height' }}
           >
             <div className="space-y-2 max-h-64 overflow-y-auto scrollbar-hide">
               {sortedValues.map(([value, count]) => (
@@ -223,7 +232,9 @@ const TraitsFilter = React.memo(({
     onTraitsChange(newSelectedTraits);
   }, [selectedTraits, onTraitsChange]);
 
-  const clearAllTraits = useCallback(() => {
+  const clearAllTraits = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     onTraitsChange({});
   }, [onTraitsChange]);
 
@@ -245,7 +256,8 @@ const TraitsFilter = React.memo(({
         {activeTraitCount > 0 && (
           <button
             onClick={clearAllTraits}
-            className="text-xs text-slate-400 hover:text-white transition-colors flex items-center gap-1"
+            className="text-xs text-slate-400 hover:text-white transition-colors flex items-center gap-1 focus:outline-none"
+            type="button"
           >
             <X size={12} />
             Clear ({activeTraitCount})
@@ -332,7 +344,7 @@ const SkeletonCard = React.memo(({ viewMode }: { viewMode: 'grid' | 'list' }) =>
 });
 
 // Grid of skeleton cards
-const SkeletonGrid = React.memo(({ count = 24, viewMode }: { count?: number; viewMode: 'grid' | 'list' }) => {
+const SkeletonGrid = React.memo(({ count = 36, viewMode }: { count?: number; viewMode: 'grid' | 'list' }) => {
   const skeletons = Array.from({ length: count }, (_, i) => (
     <SkeletonCard key={`skeleton-${i}`} viewMode={viewMode} />
   ));
@@ -586,16 +598,44 @@ export default function ScavenjersCollectionPage() {
   const [selectedTraits, setSelectedTraits] = useState<{ [trait: string]: Set<string> }>({});
   const [selectedNFT, setSelectedNFT] = useState<NFT | null>(null);
   const [activeTab, setActiveTab] = useState<'explore' | 'exchange' | 'holders' | 'about'>('explore');
-  const [visibleCount, setVisibleCount] = useState(24); // Start with 24 items
+  const [visibleCount, setVisibleCount] = useState(36); // Start with 36 items for larger collection
   const [loadingMore, setLoadingMore] = useState(false);
   const [showSkeletons, setShowSkeletons] = useState(false);
   const [previousFilterState, setPreviousFilterState] = useState<string>('');
+  
+  // Purchase state
+  const [purchaseQuantity, setPurchaseQuantity] = useState(1);
+  const [showCrossmintModal, setShowCrossmintModal] = useState(false);
+  
+  // Prevent page scrolling beyond the collection view while allowing internal scrolling
+  useEffect(() => {
+    // Set body and html to prevent page-level overflow scrolling
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    // Ensure we start at the top
+    window.scrollTo(0, 0);
+    
+    return () => {
+      // Restore original overflow styles when component unmounts
+      document.body.style.overflow = originalBodyOverflow;
+      document.documentElement.style.overflow = originalHtmlOverflow;
+    };
+  }, []);
   
   // Performance optimization: Pre-compute trait maps for faster filtering
   const nftTraitMaps = useMemo(() => {
     return allNFTs.map(nft => ({
       nft,
-      traitMap: new Map((nft.attributes || []).map(attr => [attr.trait_type, attr.value])),
+      traitMap: new Map((nft.attributes || []).map(attr => {
+        const type = attr.trait_type?.trim();
+        const value = attr.value?.trim();
+        const displayValue = value === '' || value?.toLowerCase() === 'blank' ? 'None' : value;
+        return [type, displayValue] as [string, string];
+      }).filter(([type]) => type && type.length > 0)), // Filter out entries with empty trait types
       searchText: nft.name.toLowerCase()
     }));
   }, [allNFTs]);
@@ -668,16 +708,23 @@ export default function ScavenjersCollectionPage() {
     loadMetadata();
   }, []);
 
-  // Calculate collection traits
+  // Calculate collection traits with improved handling for the new collection
   const collectionTraits = useMemo(() => {
     const traitsMap: { [trait: string]: { [value: string]: number } } = {};
     allNFTs.forEach(nft => {
       (nft.attributes || []).forEach((trait: NFTTrait) => {
-        const type = trait.trait_type;
-        const value = trait.value;
+        const type = trait.trait_type?.trim(); // Trim whitespace from trait types
+        const value = trait.value?.trim(); // Trim whitespace from values
+        
+        // Only skip if trait_type is missing or if value is null/undefined
+        // Include empty strings as they represent "blank" or "none" traits
         if (!type || value === undefined || value === null) return;
+        
         if (!traitsMap[type]) traitsMap[type] = {};
-        traitsMap[type][value] = (traitsMap[type][value] || 0) + 1;
+        
+        // Handle empty string values by giving them a proper display name
+        const displayValue = value === '' || value.toLowerCase() === 'blank' ? 'None' : value;
+        traitsMap[type][displayValue] = (traitsMap[type][displayValue] || 0) + 1;
       });
     });
     return traitsMap;
@@ -703,7 +750,7 @@ export default function ScavenjersCollectionPage() {
     if (previousFilterState && previousFilterState !== currentFilterState) {
       // Show skeletons immediately when filters change
       setShowSkeletons(true);
-      setVisibleCount(24); // Reset visible count
+      setVisibleCount(36); // Reset visible count
       
       // Clear any existing skeleton timeout
       if (skeletonTimeoutRef.current) {
@@ -751,7 +798,7 @@ export default function ScavenjersCollectionPage() {
 
   // Reset visible count when filters change
   useEffect(() => {
-    setVisibleCount(24);
+    setVisibleCount(36);
   }, [debouncedSearchQuery, selectedTraits]);
 
   // Optimized filter function with performance improvements and batching
@@ -845,9 +892,22 @@ export default function ScavenjersCollectionPage() {
       }
     });
     
-    setVisibleCount(prev => Math.min(prev + 24, collectionStats.totalItems));
+    setVisibleCount(prev => Math.min(prev + 36, collectionStats.totalItems));
     setLoadingMore(false);
   }, [loadingMore, collectionStats.hasMore, collectionStats.totalItems]);
+
+  // Purchase quantity handlers
+  const incrementQuantity = useCallback(() => {
+    setPurchaseQuantity(prev => Math.min(prev + 1, 10)); // Max 10 NFTs
+  }, []);
+
+  const decrementQuantity = useCallback(() => {
+    setPurchaseQuantity(prev => Math.max(prev - 1, 1)); // Min 1 NFT
+  }, []);
+
+  const handlePurchase = useCallback(() => {
+    setShowCrossmintModal(true);
+  }, []);
 
   if (loading) {
     return (
@@ -861,7 +921,21 @@ export default function ScavenjersCollectionPage() {
   }
 
   return (
-    <div className="h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex flex-col overflow-hidden">
+    <div 
+      className="collection-container min-h-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex flex-col overflow-hidden" 
+      style={{ 
+        height: 'calc(100vh - 96px)', // Mobile: 56px header + 40px footer = 96px
+        scrollBehavior: 'auto' 
+      }}
+    >
+      {/* Responsive height adjustment for larger screens */}
+      <style>{`
+        @media (min-width: 640px) {
+          .collection-container {
+            height: calc(100vh - 112px) !important;
+          }
+        }
+      `}</style>
       {/* Collection Header - Simplified */}
       <div className="flex-shrink-0">
         <div className="px-4 lg:px-6 xl:px-8 py-6">
@@ -980,10 +1054,10 @@ export default function ScavenjersCollectionPage() {
       )}
 
       {/* Main Content Layout - Scrollable */}
-      <div className="flex-1 flex gap-4 px-4 lg:px-6 xl:px-8 pb-6 overflow-hidden">
+      <div className="flex-1 flex gap-4 px-4 lg:px-6 xl:px-8 pb-6 overflow-hidden min-h-0">
         {/* Traits Filter Sidebar - Only show for explore tab */}
         {activeTab === 'explore' && showFilters && (
-          <div className="w-80 flex-shrink-0 h-full">
+          <div className="w-80 flex-shrink-0 h-full overflow-hidden">
             <TraitsFilter
               collectionTraits={collectionTraits}
               selectedTraits={selectedTraits}
@@ -993,13 +1067,96 @@ export default function ScavenjersCollectionPage() {
         )}
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto scrollbar-hide">
+        <div className="flex-1 overflow-y-auto scrollbar-hide min-h-0">
           {activeTab === 'exchange' && (
             <ExchangePage />
           )}
           
           {activeTab === 'explore' && (
             <>
+              {/* Purchase Section */}
+              <div className="mb-8 p-6 bg-gradient-to-r from-slate-800/30 to-slate-700/30 backdrop-blur-sm border border-slate-600/30 rounded-xl">
+                <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+                  {/* Left side - Information */}
+                  <div className="flex-1 text-center lg:text-left">
+                    <h3 className="text-2xl font-bold text-white mb-2 font-display">
+                      Get Your Random Eko
+                    </h3>
+                    <p className="text-slate-300 mb-3">
+                      Choose from <span className="text-cyan-400 font-semibold">9,000 unique Ekos</span> with randomized traits and abilities.
+                      Join the Scavenjer community and discover your perfect companion!
+                    </p>
+                    <div className="flex items-center justify-center lg:justify-start gap-2 text-sm text-slate-400">
+                      <ShoppingCart size={16} />
+                      <span>Secure payment via Crossmint • Credit cards & crypto accepted</span>
+                    </div>
+                  </div>
+
+                  {/* Right side - Purchase Controls */}
+                  <div className="flex-shrink-0">
+                    <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-600/50 rounded-xl p-4 min-w-[280px]">
+                      <div className="text-center mb-4">
+                        <div className="text-2xl font-bold text-white mb-1">
+                          ~$19 <span className="text-sm font-normal text-slate-400">USD each</span>
+                        </div>
+                        <div className="text-sm text-slate-400">
+                          Current Est. Total: <span className="text-cyan-400 font-semibold">${(19 * purchaseQuantity).toFixed(0)} USD</span>
+                        </div>
+                        <div className="text-xs text-slate-500 mt-1">
+                          Pricing fluctuates based on Polygon network
+                        </div>
+                      </div>
+
+                      {/* Quantity Selector */}
+                      <div className="flex items-center justify-center gap-4 mb-4">
+                        <span className="text-sm text-slate-300">Quantity:</span>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={decrementQuantity}
+                            disabled={purchaseQuantity <= 1}
+                            className={cn(
+                              "p-2 rounded-lg transition-all duration-200",
+                              purchaseQuantity <= 1
+                                ? "bg-slate-700/50 text-slate-500 cursor-not-allowed"
+                                : "bg-slate-700/80 text-white hover:bg-slate-600/80"
+                            )}
+                          >
+                            <Minus size={16} />
+                          </button>
+                          <span className="w-8 text-center text-lg font-semibold text-white">
+                            {purchaseQuantity}
+                          </span>
+                          <button
+                            onClick={incrementQuantity}
+                            disabled={purchaseQuantity >= 10}
+                            className={cn(
+                              "p-2 rounded-lg transition-all duration-200",
+                              purchaseQuantity >= 10
+                                ? "bg-slate-700/50 text-slate-500 cursor-not-allowed"
+                                : "bg-slate-700/80 text-white hover:bg-slate-600/80"
+                            )}
+                          >
+                            <Plus size={16} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Buy Button */}
+                      <button
+                        onClick={handlePurchase}
+                        className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-yellow-500/25"
+                      >
+                        Buy {purchaseQuantity} Random Eko{purchaseQuantity > 1 ? 's' : ''} with Crossmint
+                      </button>
+                      
+                      <div className="text-xs text-slate-500 text-center mt-2">
+                        Max 10 Ekos per transaction
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Show skeletons immediately when filtering starts */}
               {showSkeletons ? (
                 <div className="relative">
@@ -1102,9 +1259,9 @@ export default function ScavenjersCollectionPage() {
                 <div>
                   <h3 className="text-white font-medium mb-3">About The Scavenjers</h3>
                   <p className="text-slate-400 text-sm leading-relaxed">
-                    A collection of unique digital collectibles exploring the post-apocalyptic world of Eko. 
-                    Each Scavenjer represents a survivor with unique traits and abilities, navigating through 
-                    the remnants of civilization.
+                      Intro Eko collection to the Scavenjer ecosystem. A massive collection of 9,000 unique digital collectibles 
+                      exploring the post-apocalyptic world. Each Scavenjer represents a survivor with randomized traits and abilities, 
+                      navigating through the remnants of civilization.
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
@@ -1189,7 +1346,7 @@ export default function ScavenjersCollectionPage() {
                             {trait.value}
                           </div>
                           <div className="text-xs text-slate-500 mt-1">
-                            {collectionTraits[trait.trait_type]?.[trait.value] || 0} have this trait
+                            {collectionTraits[trait.trait_type?.trim()]?.[trait.value?.trim() === '' || trait.value?.toLowerCase() === 'blank' ? 'None' : trait.value?.trim()] || 0} have this trait
                           </div>
                         </div>
                       ))}
@@ -1201,6 +1358,15 @@ export default function ScavenjersCollectionPage() {
           </motion.div>
         </div>
       )}
+
+      {/* Crossmint Purchase Modal */}
+      <CrossmintCheckoutModal
+        isOpen={showCrossmintModal}
+        onClose={() => setShowCrossmintModal(false)}
+        collectionTitle="The Scavenjers"
+        price={19 * purchaseQuantity}
+        quantity={purchaseQuantity}
+      />
     </div>
   );
 }

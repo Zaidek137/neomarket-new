@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useActiveAccount, ConnectButton } from 'thirdweb/react';
@@ -17,11 +16,22 @@ interface CrossmintCheckoutModalProps {
   onClose: () => void;
   collectionTitle: string;
   price: number;
+  quantity?: number;
 }
 
-export default function CrossmintCheckoutModal({ isOpen, onClose }: CrossmintCheckoutModalProps) {
+export default function CrossmintCheckoutModal({ isOpen, onClose, collectionTitle, price, quantity = 1 }: CrossmintCheckoutModalProps) {
   const account = useActiveAccount();
   const address = account?.address;
+
+  const crossmintTotalPrice = (74 * quantity).toString();
+  
+  // Debug logging
+  console.log('Crossmint Parameters:', {
+    quantity,
+    totalPrice: crossmintTotalPrice,
+    address,
+    collectionId: COLLECTION_ID
+  });
 
   if (!isOpen) return null;
 
@@ -44,10 +54,10 @@ export default function CrossmintCheckoutModal({ isOpen, onClose }: CrossmintChe
           
           <div className="pr-8">
             <h2 className="text-xl sm:text-2xl font-bold text-white mb-1">
-              Buy Random Eko
+              Buy {quantity} Random Eko{quantity > 1 ? 's' : ''}
             </h2>
             <p className="text-sm sm:text-base text-gray-400">
-              From The Scavenjers Collection
+              From {collectionTitle}
             </p>
           </div>
         </div>
@@ -64,23 +74,35 @@ export default function CrossmintCheckoutModal({ isOpen, onClose }: CrossmintChe
               />
             </div>
             <h3 className="text-lg sm:text-xl font-semibold text-white mb-1">
-              Mystery Eko
+              {quantity > 1 ? `${quantity} Mystery Ekos` : 'Mystery Eko'}
             </h3>
             <p className="text-xs sm:text-sm text-gray-400 mb-2">
-              Rare traits • Unique abilities
+              Randomized traits • Unique abilities
             </p>
           </div>
 
           {/* Purchase Section */}
           <div className="space-y-3">
             <div className="flex justify-between items-center text-base sm:text-lg">
-              <span className="text-gray-300">Price:</span>
-              <span className="text-[#2DD4BF] font-bold">$29.55 USD</span>
+              <span className="text-gray-300">Current Est. Total:</span>
+              <span className="text-[#2DD4BF] font-bold">~${price.toFixed(0)} USD</span>
+            </div>
+            {quantity > 1 && (
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-400">~${(price / quantity).toFixed(0)} each × {quantity}:</span>
+                <span className="text-gray-300">~${price.toFixed(0)}</span>
+              </div>
+            )}
+            <div className="text-center text-xs text-gray-500 mt-2">
+              Pricing fluctuates based on Polygon network
             </div>
             
             <div className="text-center">
               <p className="text-xs sm:text-sm text-gray-400 mb-4">
-                Get a randomized Eko from our collection
+                {quantity > 1 
+                  ? `Get ${quantity} randomized Ekos from 9,000 unique collectibles`
+                  : 'Get a randomized Eko from 9,000 unique collectibles'
+                }
               </p>
               
               {address ? (
@@ -91,8 +113,8 @@ export default function CrossmintCheckoutModal({ isOpen, onClose }: CrossmintChe
                       lineItems={{
                         collectionLocator: `crossmint:${COLLECTION_ID}`,
                         callData: {
-                          totalPrice: "111",
-                          quantity: 1,
+                          totalPrice: crossmintTotalPrice,
+                          quantity: quantity,
                         },
                       }}
                       payment={{ crypto: { enabled: true }, fiat: { enabled: true } }}

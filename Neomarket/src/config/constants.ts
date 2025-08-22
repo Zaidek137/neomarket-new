@@ -40,6 +40,36 @@ export const DEBUG = {
   logErrors: true
 };
 
+// IPFS & Pinata Gateway Configuration
+export const IPFS_CONFIG = {
+  // Primary Pinata gateway with your custom domain  
+  primaryGateway: import.meta.env.VITE_PINATA_GATEWAY_URL || 'https://ifps.scavenjer.com',
+  
+  // Fallback gateways (in order of preference)
+  fallbackGateways: [
+    'https://cloudflare-ipfs.com',
+    'https://ipfs.io', 
+    'https://gateway.pinata.cloud'
+  ],
+  
+  // Performance settings
+  timeout: 10000, // 10 seconds
+  retryAttempts: 3,
+  cacheEnabled: true,
+  maxCacheSize: 1000,
+  
+  // Image optimization settings
+  imageOptimization: {
+    formats: ['avif', 'webp', 'jpg'] as const,
+    qualities: { high: 90, medium: 75, low: 60 },
+    sizes: {
+      thumbnail: { width: 300, height: 300 },
+      medium: { width: 600, height: 600 },
+      large: { width: 1200, height: 1200 }
+    }
+  }
+};
+
 // ThirdWeb configuration
 export const THIRDWEB_CONFIG = {
   supportedChains: ["polygon"],

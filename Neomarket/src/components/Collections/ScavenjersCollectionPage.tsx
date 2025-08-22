@@ -17,77 +17,12 @@ import {
 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { cn } from '../../lib/utils';
+import { ipfsToHttp, generateOptimizedImageSources, preWarmAssets, getIPFSPerformanceStats } from '../../lib/ipfs';
 
-// Image cache for better performance
-const imageCache = new Map<string, string>();
-
-// Image optimization utilities
-const getOptimizedImageUrl = (originalUrl: string, options: {
-  width?: number;
-  height?: number;
-  format?: 'webp' | 'avif' | 'jpg' | 'png';
-  quality?: number;
-  gateway?: 'ipfs.io' | 'cloudflare';
-} = {}) => {
-  const { gateway = 'ipfs.io' } = options;
-  
-  if (!originalUrl) return '';
-  
-  // Convert IPFS URLs to HTTP
-  let httpUrl = originalUrl;
-  if (originalUrl.startsWith('ipfs://')) {
-    const base = gateway === 'ipfs.io' ? 'https://ipfs.io/ipfs/' : 'https://cloudflare-ipfs.com/ipfs/';
-    httpUrl = originalUrl.replace('ipfs://', base);
-  }
-  
-  // For now, return the HTTP URL - in a real app you'd use an image CDN like Cloudinary or ImageKit
-  // Example with Cloudinary: https://res.cloudinary.com/demo/image/fetch/f_auto,q_auto,w_300,h_300/${encodeURIComponent(httpUrl)}
-  return httpUrl;
-};
-
-// IPFS helper function with caching and optimization
-function ipfsToHttp(url: string, gateway: 'ipfs.io' | 'cloudflare' = 'ipfs.io') {
-  if (!url) return '';
-  
-  const cacheKey = `${url}-${gateway}`;
-  if (imageCache.has(cacheKey)) {
-    return imageCache.get(cacheKey)!;
-  }
-  
-  let result = url;
-  if (url.startsWith('ipfs://')) {
-    const base = gateway === 'ipfs.io' ? 'https://ipfs.io/ipfs/' : 'https://cloudflare-ipfs.com/ipfs/';
-    result = url.replace('ipfs://', base);
-  }
-  
-  imageCache.set(cacheKey, result);
-  return result;
-}
-
-// Generate responsive image sources
-const generateImageSources = (url: string) => {
-  const baseUrl = ipfsToHttp(url);
-  
-  return {
-    // Thumbnail for grid view (small)
-    thumbnail: getOptimizedImageUrl(baseUrl, { width: 300, height: 300, format: 'webp' }),
-    thumbnailAvif: getOptimizedImageUrl(baseUrl, { width: 300, height: 300, format: 'avif' }),
-    thumbnailJpg: getOptimizedImageUrl(baseUrl, { width: 300, height: 300, format: 'jpg' }),
-    
-    // Medium for list view
-    medium: getOptimizedImageUrl(baseUrl, { width: 600, height: 600, format: 'webp' }),
-    mediumAvif: getOptimizedImageUrl(baseUrl, { width: 600, height: 600, format: 'avif' }),
-    mediumJpg: getOptimizedImageUrl(baseUrl, { width: 600, height: 600, format: 'jpg' }),
-    
-    // Large for modal/detail view
-    large: getOptimizedImageUrl(baseUrl, { width: 1200, height: 1200, format: 'webp' }),
-    largeAvif: getOptimizedImageUrl(baseUrl, { width: 1200, height: 1200, format: 'avif' }),
-    largeJpg: getOptimizedImageUrl(baseUrl, { width: 1200, height: 1200, format: 'jpg' }),
-    
-    // Original fallback
-    original: baseUrl
-  };
-};
+// ⚡ PINATA GATEWAY OPTIMIZATION ⚡
+// Old IPFS functions replaced with optimized Pinata gateway system  
+// Now using dedicated gateway: https://ifps.scavenjer.com
+// Enhanced caching, smart fallbacks, and performance monitoring included
 
 interface NFTTrait {
   trait_type: string;
@@ -431,7 +366,7 @@ const OptimizedImage = React.memo(({
   onLoad?: () => void;
   onError?: () => void;
 }) => {
-  const sources = generateImageSources(src);
+  const sources = generateOptimizedImageSources(src);
   const [imageError, setImageError] = useState(false);
   const [fallbackAttempt, setFallbackAttempt] = useState(0);
   
@@ -462,8 +397,8 @@ const OptimizedImage = React.memo(({
           return sources.thumbnail;
       }
     } else if (fallbackAttempt === 1) {
-      // Try cloudflare gateway
-      return ipfsToHttp(src, 'cloudflare');
+      // Try fallback gateway
+      return ipfsToHttp(src, { gatewayIndex: 1 });
     } else {
       return sources.original;
     }
@@ -694,6 +629,12 @@ export default function ScavenjersCollectionPage() {
         const nfts = await response.json();
         if (Array.isArray(nfts)) {
           setAllNFTs(nfts);
+          
+          // 🔥 Pre-warm first 20 images via Pinata gateway for faster loading
+          const imageUrls = nfts.slice(0, 20).map(nft => nft.image).filter(Boolean);
+          if (imageUrls.length > 0) {
+            preWarmAssets(imageUrls).catch(console.warn);
+          }
         } else {
           console.error('Invalid metadata format:', nfts);
           setAllNFTs([]);
@@ -710,6 +651,12 @@ export default function ScavenjersCollectionPage() {
             nfts = (data as any).default;
           }
           setAllNFTs(nfts);
+          
+          // 🔥 Pre-warm images for fallback data too
+          const imageUrls = nfts.slice(0, 20).map(nft => nft.image).filter(Boolean);
+          if (imageUrls.length > 0) {
+            preWarmAssets(imageUrls).catch(console.warn);
+          }
         } catch (fallbackError) {
           console.error('Fallback metadata loading failed:', fallbackError);
           setAllNFTs([]);

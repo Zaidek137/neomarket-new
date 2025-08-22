@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { cn } from '../../lib/utils';
-import { ipfsToHttp, generateOptimizedImageSources, preWarmAssets, getIPFSPerformanceStats } from '../../lib/ipfs';
+import { ipfsToHttp, generateOptimizedImageSources, preWarmAssets } from '../../lib/ipfs';
 
 // ⚡ PINATA GATEWAY OPTIMIZATION ⚡
 // Old IPFS functions replaced with optimized Pinata gateway system  
@@ -80,19 +80,32 @@ const TraitOption = React.memo(({
   isSelected: boolean;
   onToggle: (trait: string, value: string) => void;
 }) => {
-  const handleToggle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleToggle = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    e.nativeEvent.stopImmediatePropagation();
     onToggle(trait, value);
   }, [trait, value, onToggle]);
 
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.nativeEvent.stopImmediatePropagation();
+  }, []);
+
   return (
-    <label className="flex items-center gap-3 cursor-pointer group">
+    <div 
+      className="flex items-center gap-3 cursor-pointer group"
+      onClick={handleToggle}
+      onMouseDown={(e) => e.preventDefault()}
+      onTouchStart={(e) => e.preventDefault()}
+    >
       <input
         type="checkbox"
         checked={isSelected}
-        onChange={handleToggle}
+        onChange={handleInputChange}
         className="sr-only"
+        tabIndex={-1}
       />
       <div className={cn(
         "w-4 h-4 rounded border-2 transition-all duration-200 flex items-center justify-center",
@@ -110,7 +123,7 @@ const TraitOption = React.memo(({
       <span className="text-xs text-slate-500 bg-slate-700/50 rounded-full px-2 py-0.5">
         {count}
       </span>
-    </label>
+    </div>
   );
 });
 
@@ -133,6 +146,7 @@ const TraitCategory = React.memo(({
   const handleToggleCategory = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    e.nativeEvent.stopImmediatePropagation();
     onToggleCategory(trait);
   }, [trait, onToggleCategory]);
 
@@ -145,6 +159,8 @@ const TraitCategory = React.memo(({
     <div className="pb-2">
       <button
         onClick={handleToggleCategory}
+        onMouseDown={(e) => e.preventDefault()}
+        onTouchStart={(e) => e.preventDefault()}
         className="flex items-center justify-between w-full text-left mb-2 hover:text-cyan-300 transition-colors focus:outline-none"
         type="button"
       >
@@ -235,6 +251,7 @@ const TraitsFilter = React.memo(({
   const clearAllTraits = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    e.nativeEvent.stopImmediatePropagation();
     onTraitsChange({});
   }, [onTraitsChange]);
 
@@ -256,6 +273,8 @@ const TraitsFilter = React.memo(({
         {activeTraitCount > 0 && (
           <button
             onClick={clearAllTraits}
+            onMouseDown={(e) => e.preventDefault()}
+            onTouchStart={(e) => e.preventDefault()}
             className="text-xs text-slate-400 hover:text-white transition-colors flex items-center gap-1 focus:outline-none"
             type="button"
           >

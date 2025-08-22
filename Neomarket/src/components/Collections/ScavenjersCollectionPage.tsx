@@ -128,7 +128,122 @@ const collectionInfo: CollectionInfo = {
   creator: 'NeoMarket'
 };
 
-function TraitsFilter({ 
+// Memoized trait option component to prevent unnecessary re-renders
+const TraitOption = React.memo(({ 
+  trait, 
+  value, 
+  count, 
+  isSelected, 
+  onToggle 
+}: {
+  trait: string;
+  value: string;
+  count: number;
+  isSelected: boolean;
+  onToggle: (trait: string, value: string) => void;
+}) => {
+  const handleToggle = useCallback(() => {
+    onToggle(trait, value);
+  }, [trait, value, onToggle]);
+
+  return (
+    <label className="flex items-center gap-3 cursor-pointer group">
+      <input
+        type="checkbox"
+        checked={isSelected}
+        onChange={handleToggle}
+        className="sr-only"
+      />
+      <div className={cn(
+        "w-4 h-4 rounded border-2 transition-all duration-200 flex items-center justify-center",
+        isSelected
+          ? "border-cyan-500 bg-cyan-500"
+          : "border-slate-500 group-hover:border-slate-400"
+      )}>
+        {isSelected && (
+          <Check size={12} className="text-white" />
+        )}
+      </div>
+      <span className="text-sm text-slate-300 group-hover:text-white transition-colors flex-1">
+        {value}
+      </span>
+      <span className="text-xs text-slate-500 bg-slate-700/50 rounded-full px-2 py-0.5">
+        {count}
+      </span>
+    </label>
+  );
+});
+
+// Memoized trait category component
+const TraitCategory = React.memo(({ 
+  trait, 
+  values, 
+  isOpen, 
+  selectedTraits, 
+  onToggleCategory, 
+  onToggleTrait 
+}: {
+  trait: string;
+  values: { [value: string]: number };
+  isOpen: boolean;
+  selectedTraits: Set<string> | undefined;
+  onToggleCategory: (trait: string) => void;
+  onToggleTrait: (trait: string, value: string) => void;
+}) => {
+  const handleToggleCategory = useCallback(() => {
+    onToggleCategory(trait);
+  }, [trait, onToggleCategory]);
+
+  // Memoize sorted values to prevent re-sorting on every render
+  const sortedValues = useMemo(() => {
+    return Object.entries(values).sort(([a], [b]) => a.localeCompare(b));
+  }, [values]);
+
+  return (
+    <div className="pb-2">
+      <button
+        onClick={handleToggleCategory}
+        className="flex items-center justify-between w-full text-left mb-2 hover:text-cyan-300 transition-colors"
+      >
+        <span className="text-sm font-medium text-white">{trait}</span>
+        <ChevronDown 
+          size={14} 
+          className={cn(
+            "text-slate-400 transition-transform duration-200",
+            isOpen && "rotate-180"
+          )} 
+        />
+      </button>
+      
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-2 max-h-64 overflow-y-auto scrollbar-hide">
+              {sortedValues.map(([value, count]) => (
+                <TraitOption
+                  key={value}
+                  trait={trait}
+                  value={value}
+                  count={count}
+                  isSelected={selectedTraits?.has(value) || false}
+                  onToggle={onToggleTrait}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+});
+
+const TraitsFilter = React.memo(({ 
   collectionTraits, 
   selectedTraits, 
   onTraitsChange 
@@ -136,7 +251,7 @@ function TraitsFilter({
   collectionTraits: { [trait: string]: { [value: string]: number } };
   selectedTraits: { [trait: string]: Set<string> };
   onTraitsChange: (traits: { [trait: string]: Set<string> }) => void;
-}) {
+}) => {
   const [openCategories, setOpenCategories] = useState<{ [trait: string]: boolean }>({});
 
   // Initialize all categories as open by default
@@ -148,14 +263,14 @@ function TraitsFilter({
     setOpenCategories(initialState);
   }, [collectionTraits]);
 
-  const toggleCategory = (trait: string) => {
+  const toggleCategory = useCallback((trait: string) => {
     setOpenCategories(prev => ({
       ...prev,
       [trait]: !prev[trait]
     }));
-  };
+  }, []);
 
-  const toggleTrait = (trait: string, value: string) => {
+  const toggleTrait = useCallback((trait: string, value: string) => {
     const newSelectedTraits = { ...selectedTraits };
     if (!newSelectedTraits[trait]) {
       newSelectedTraits[trait] = new Set();
@@ -171,13 +286,21 @@ function TraitsFilter({
     }
     
     onTraitsChange(newSelectedTraits);
-  };
+  }, [selectedTraits, onTraitsChange]);
 
-  const clearAllTraits = () => {
+  const clearAllTraits = useCallback(() => {
     onTraitsChange({});
-  };
+  }, [onTraitsChange]);
 
-  const activeTraitCount = Object.values(selectedTraits).reduce((acc, set) => acc + set.size, 0);
+  // Memoize expensive calculation
+  const activeTraitCount = useMemo(() => {
+    return Object.values(selectedTraits).reduce((acc, set) => acc + set.size, 0);
+  }, [selectedTraits]);
+
+  // Memoize traits entries to prevent re-creating array on every render
+  const traitsEntries = useMemo(() => {
+    return Object.entries(collectionTraits);
+  }, [collectionTraits]);
 
   return (
     <div className="bg-slate-800/20 rounded-xl h-full flex flex-col">
@@ -197,70 +320,21 @@ function TraitsFilter({
 
       {/* Trait Categories - Scrollable */}
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3 scrollbar-hide">
-        {Object.entries(collectionTraits).map(([trait, values]) => (
-          <div key={trait} className="pb-2">
-            <button
-              onClick={() => toggleCategory(trait)}
-              className="flex items-center justify-between w-full text-left mb-2 hover:text-cyan-300 transition-colors"
-            >
-              <span className="text-sm font-medium text-white">{trait}</span>
-              <ChevronDown 
-                size={14} 
-                className={cn(
-                  "text-slate-400 transition-transform duration-200",
-                  openCategories[trait] && "rotate-180"
-                )} 
-              />
-            </button>
-            
-            <AnimatePresence>
-              {openCategories[trait] && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.2, ease: 'easeInOut' }}
-                  className="overflow-hidden"
-                >
-                  <div className="space-y-2 max-h-64 overflow-y-auto scrollbar-hide">
-                    {Object.entries(values)
-                      .sort(([a], [b]) => a.localeCompare(b))
-                      .map(([value, count]) => (
-                        <label key={value} className="flex items-center gap-3 cursor-pointer group">
-                          <input
-                            type="checkbox"
-                            checked={selectedTraits[trait]?.has(value) || false}
-                            onChange={() => toggleTrait(trait, value)}
-                            className="sr-only"
-                          />
-                          <div className={cn(
-                            "w-4 h-4 rounded border-2 transition-all duration-200 flex items-center justify-center",
-                            selectedTraits[trait]?.has(value)
-                              ? "border-cyan-500 bg-cyan-500"
-                              : "border-slate-500 group-hover:border-slate-400"
-                          )}>
-                            {selectedTraits[trait]?.has(value) && (
-                              <Check size={12} className="text-white" />
-                            )}
-                          </div>
-                          <span className="text-sm text-slate-300 group-hover:text-white transition-colors flex-1">
-                            {value}
-                          </span>
-                          <span className="text-xs text-slate-500 bg-slate-700/50 rounded-full px-2 py-0.5">
-                            {count}
-                          </span>
-                        </label>
-                      ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+        {traitsEntries.map(([trait, values]) => (
+          <TraitCategory
+            key={trait}
+            trait={trait}
+            values={values}
+            isOpen={openCategories[trait]}
+            selectedTraits={selectedTraits[trait]}
+            onToggleCategory={toggleCategory}
+            onToggleTrait={toggleTrait}
+          />
         ))}
       </div>
     </div>
   );
-}
+});
 
 // Enhanced loading animation
 const LoadingSpinner = ({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) => {
@@ -601,17 +675,23 @@ export default function ScavenjersCollectionPage() {
     return traitsMap;
   }, [allNFTs]);
 
-  // Debounced filtering for better performance
+  // Enhanced debouncing for better performance
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const filterUpdateTimeoutRef = useRef<NodeJS.Timeout>();
 
+  // Debounce search input with faster response for short queries
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
+    
+    // Faster response for short queries, longer delay for complex searches
+    const delay = searchQuery.length <= 2 ? 150 : 300;
+    
     searchTimeoutRef.current = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-    }, 300);
+    }, delay);
     
     return () => {
       if (searchTimeoutRef.current) {
@@ -620,52 +700,97 @@ export default function ScavenjersCollectionPage() {
     };
   }, [searchQuery]);
 
+  // Debounce trait filter updates to prevent excessive re-filtering
+  const debouncedOnTraitsChange = useCallback((newTraits: { [trait: string]: Set<string> }) => {
+    if (filterUpdateTimeoutRef.current) {
+      clearTimeout(filterUpdateTimeoutRef.current);
+    }
+    
+    filterUpdateTimeoutRef.current = setTimeout(() => {
+      setSelectedTraits(newTraits);
+    }, 100); // Quick response for better UX
+  }, []);
+
   // Reset visible count when filters change
   useEffect(() => {
     setVisibleCount(24);
   }, [debouncedSearchQuery, selectedTraits]);
 
-  // Optimized filter function with better performance
+  // Optimized filter function with performance improvements and batching
   const filteredNFTs = useMemo(() => {
+    // Early return for empty data
+    if (nftTraitMaps.length === 0) {
+      return [];
+    }
+
     setFiltering(true);
     
     let filtered = nftTraitMaps;
 
-    // Search filter - use pre-computed lowercase text
+    // Search filter with optimized string matching
     if (debouncedSearchQuery) {
       const query = debouncedSearchQuery.toLowerCase();
+      // Use native filter for better performance than custom loops
       filtered = filtered.filter(item => item.searchText.includes(query));
     }
 
-    // Traits filter - use pre-computed trait maps
-    for (const [trait, selectedValues] of Object.entries(selectedTraits)) {
-      if (selectedValues.size > 0) {
-        filtered = filtered.filter(item => {
+    // Optimized traits filtering with early exit
+    const traitEntries = Object.entries(selectedTraits);
+    if (traitEntries.length > 0) {
+      filtered = filtered.filter(item => {
+        // Early exit: check all traits in one pass
+        return traitEntries.every(([trait, selectedValues]) => {
+          if (selectedValues.size === 0) return true;
           const nftValue = item.traitMap.get(trait);
           return nftValue && selectedValues.has(nftValue);
         });
-      }
+      });
     }
 
-    // Use setTimeout to update filtering state after render
-    setTimeout(() => setFiltering(false), 0);
+    // Use requestIdleCallback for non-blocking state update
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => setFiltering(false));
+    } else {
+      setTimeout(() => setFiltering(false), 0);
+    }
     
     return filtered.map(item => item.nft);
   }, [nftTraitMaps, debouncedSearchQuery, selectedTraits]);
+
+  // Memoize expensive operations for better performance
+  const collectionStats = useMemo(() => {
+    return {
+      totalItems: filteredNFTs.length,
+      remainingItems: Math.max(0, filteredNFTs.length - visibleCount),
+      hasMore: visibleCount < filteredNFTs.length
+    };
+  }, [filteredNFTs.length, visibleCount]);
 
   // Get visible NFTs based on current visible count
   const visibleNFTs = useMemo(() => {
     return filteredNFTs.slice(0, visibleCount);
   }, [filteredNFTs, visibleCount]);
 
-  // Load more function
+  // Optimized load more function with better performance
   const handleLoadMore = useCallback(async () => {
+    if (loadingMore || !collectionStats.hasMore) return;
+    
     setLoadingMore(true);
-    // Simulate brief loading for better UX
-    await new Promise(resolve => setTimeout(resolve, 300));
-    setVisibleCount(prev => Math.min(prev + 24, filteredNFTs.length));
+    
+    // Use requestIdleCallback for better performance
+    await new Promise(resolve => {
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => {
+          setTimeout(resolve, 150); // Reduced loading time
+        });
+      } else {
+        setTimeout(resolve, 150);
+      }
+    });
+    
+    setVisibleCount(prev => Math.min(prev + 24, collectionStats.totalItems));
     setLoadingMore(false);
-  }, [filteredNFTs.length]);
+  }, [loadingMore, collectionStats.hasMore, collectionStats.totalItems]);
 
   if (loading) {
     return (
@@ -760,7 +885,7 @@ export default function ScavenjersCollectionPage() {
               <div className="flex items-center gap-2">
                 {filtering && <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />}
                 <span className="text-sm text-slate-500">
-                  {filtering ? 'Filtering...' : `${filteredNFTs.length} items`}
+                  {filtering ? 'Filtering...' : `${collectionStats.totalItems} items`}
                 </span>
               </div>
             </div>
@@ -805,7 +930,7 @@ export default function ScavenjersCollectionPage() {
             <TraitsFilter
               collectionTraits={collectionTraits}
               selectedTraits={selectedTraits}
-              onTraitsChange={setSelectedTraits}
+              onTraitsChange={debouncedOnTraitsChange}
             />
           </div>
         )}
@@ -857,7 +982,7 @@ export default function ScavenjersCollectionPage() {
                   )}
 
                   {/* Load More Button */}
-                  {visibleCount < filteredNFTs.length && (
+                  {collectionStats.hasMore && (
                     <div className="flex justify-center pt-8 pb-4">
                       <button
                         onClick={handleLoadMore}
@@ -876,7 +1001,7 @@ export default function ScavenjersCollectionPage() {
                           </>
                         ) : (
                           <>
-                            Load More ({filteredNFTs.length - visibleCount} remaining)
+                            Load More ({collectionStats.remainingItems} remaining)
                           </>
                         )}
                       </button>

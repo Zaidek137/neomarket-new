@@ -21,7 +21,31 @@ import { cn } from '../../lib/utils';
 // Image cache for better performance
 const imageCache = new Map<string, string>();
 
-// IPFS helper function with caching
+// Image optimization utilities
+const getOptimizedImageUrl = (originalUrl: string, options: {
+  width?: number;
+  height?: number;
+  format?: 'webp' | 'avif' | 'jpg' | 'png';
+  quality?: number;
+  gateway?: 'ipfs.io' | 'cloudflare';
+} = {}) => {
+  const { gateway = 'ipfs.io' } = options;
+  
+  if (!originalUrl) return '';
+  
+  // Convert IPFS URLs to HTTP
+  let httpUrl = originalUrl;
+  if (originalUrl.startsWith('ipfs://')) {
+    const base = gateway === 'ipfs.io' ? 'https://ipfs.io/ipfs/' : 'https://cloudflare-ipfs.com/ipfs/';
+    httpUrl = originalUrl.replace('ipfs://', base);
+  }
+  
+  // For now, return the HTTP URL - in a real app you'd use an image CDN like Cloudinary or ImageKit
+  // Example with Cloudinary: https://res.cloudinary.com/demo/image/fetch/f_auto,q_auto,w_300,h_300/${encodeURIComponent(httpUrl)}
+  return httpUrl;
+};
+
+// IPFS helper function with caching and optimization
 function ipfsToHttp(url: string, gateway: 'ipfs.io' | 'cloudflare' = 'ipfs.io') {
   if (!url) return '';
   
@@ -39,6 +63,31 @@ function ipfsToHttp(url: string, gateway: 'ipfs.io' | 'cloudflare' = 'ipfs.io') 
   imageCache.set(cacheKey, result);
   return result;
 }
+
+// Generate responsive image sources
+const generateImageSources = (url: string) => {
+  const baseUrl = ipfsToHttp(url);
+  
+  return {
+    // Thumbnail for grid view (small)
+    thumbnail: getOptimizedImageUrl(baseUrl, { width: 300, height: 300, format: 'webp' }),
+    thumbnailAvif: getOptimizedImageUrl(baseUrl, { width: 300, height: 300, format: 'avif' }),
+    thumbnailJpg: getOptimizedImageUrl(baseUrl, { width: 300, height: 300, format: 'jpg' }),
+    
+    // Medium for list view
+    medium: getOptimizedImageUrl(baseUrl, { width: 600, height: 600, format: 'webp' }),
+    mediumAvif: getOptimizedImageUrl(baseUrl, { width: 600, height: 600, format: 'avif' }),
+    mediumJpg: getOptimizedImageUrl(baseUrl, { width: 600, height: 600, format: 'jpg' }),
+    
+    // Large for modal/detail view
+    large: getOptimizedImageUrl(baseUrl, { width: 1200, height: 1200, format: 'webp' }),
+    largeAvif: getOptimizedImageUrl(baseUrl, { width: 1200, height: 1200, format: 'avif' }),
+    largeJpg: getOptimizedImageUrl(baseUrl, { width: 1200, height: 1200, format: 'jpg' }),
+    
+    // Original fallback
+    original: baseUrl
+  };
+};
 
 interface NFTTrait {
   trait_type: string;
@@ -231,17 +280,120 @@ const LoadingSpinner = ({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) => {
   );
 };
 
+// Optimized image component with WebP/AVIF support and responsive sizing
+const OptimizedImage = React.memo(({ 
+  src, 
+  alt, 
+  className, 
+  priority = false,
+  size = 'thumbnail',
+  onLoad,
+  onError
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+  priority?: boolean;
+  size?: 'thumbnail' | 'medium' | 'large';
+  onLoad?: () => void;
+  onError?: () => void;
+}) => {
+  const sources = generateImageSources(src);
+  const [imageError, setImageError] = useState(false);
+  const [fallbackAttempt, setFallbackAttempt] = useState(0);
+  
+  const handleError = useCallback(() => {
+    if (fallbackAttempt === 0) {
+      // Try cloudflare gateway
+      setFallbackAttempt(1);
+    } else if (fallbackAttempt === 1) {
+      // Mark as error and use original
+      setImageError(true);
+      setFallbackAttempt(2);
+    }
+    onError?.();
+  }, [fallbackAttempt, onError]);
+
+
+
+  const getCurrentSrc = () => {
+    if (fallbackAttempt === 0) {
+      switch (size) {
+        case 'thumbnail':
+          return sources.thumbnail;
+        case 'medium':
+          return sources.medium;
+        case 'large':
+          return sources.large;
+        default:
+          return sources.thumbnail;
+      }
+    } else if (fallbackAttempt === 1) {
+      // Try cloudflare gateway
+      return ipfsToHttp(src, 'cloudflare');
+    } else {
+      return sources.original;
+    }
+  };
+
+  if (imageError && fallbackAttempt >= 2) {
+    return (
+      <div className={cn("flex items-center justify-center bg-slate-700/50", className)}>
+        <span className="text-slate-400 text-xs">No Image</span>
+      </div>
+    );
+  }
+
+  return (
+    <picture className={className}>
+      {/* AVIF format (best compression) */}
+      <source 
+        srcSet={size === 'thumbnail' ? sources.thumbnailAvif : 
+               size === 'medium' ? sources.mediumAvif : sources.largeAvif}
+        type="image/avif"
+      />
+      {/* WebP format (good compression, wide support) */}
+      <source 
+        srcSet={size === 'thumbnail' ? sources.thumbnail : 
+               size === 'medium' ? sources.medium : sources.large}
+        type="image/webp"
+      />
+      {/* Fallback JPEG */}
+      <img
+        src={getCurrentSrc()}
+        alt={alt}
+        className={className}
+        loading={priority ? 'eager' : 'lazy'}
+        decoding="async"
+        fetchPriority={priority ? ('high' as any) : ('auto' as any)}
+        width={size === 'thumbnail' ? 300 : size === 'medium' ? 600 : 1200}
+        height={size === 'thumbnail' ? 300 : size === 'medium' ? 600 : 1200}
+        onLoad={onLoad}
+        onError={handleError}
+        sizes={
+          size === 'thumbnail' ? '(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw' :
+          size === 'medium' ? '(max-width: 768px) 100vw, 50vw' :
+          '(max-width: 768px) 100vw, 80vw'
+        }
+      />
+    </picture>
+  );
+});
+
 
 
 const NFTCard = React.memo(function NFTCard({ nft, viewMode, onClick, priority = false }: { nft: NFT; viewMode: 'grid' | 'list'; onClick: () => void; priority?: boolean }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
-  const [gatewayTried, setGatewayTried] = useState<'ipfs.io' | 'cloudflare'>('ipfs.io');
-  const [srcUrl, setSrcUrl] = useState<string>(ipfsToHttp(nft.image, 'ipfs.io'));
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Images load immediately since virtual grid handles visibility
-  const isVisible = true;
+  const handleImageLoad = useCallback(() => {
+    setImageLoaded(true);
+  }, []);
+
+  const handleImageError = useCallback(() => {
+    setImageError(true);
+  }, []);
 
   if (viewMode === 'list') {
     return (
@@ -253,41 +405,21 @@ const NFTCard = React.memo(function NFTCard({ nft, viewMode, onClick, priority =
         <div className="flex items-center gap-4">
           {/* NFT Image */}
           <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
-            {!imageLoaded && !imageError && isVisible && (
+            {!imageLoaded && !imageError && (
               <LoadingSpinner size="sm" />
             )}
-            {!imageLoaded && !imageError && !isVisible && (
-              <div className="w-full h-full bg-slate-700/50" />
-            )}
-            {!imageError && isVisible && (
-              <img
-                src={srcUrl}
-                alt={nft.name}
-                className={cn(
-                  "w-full h-full object-cover group-hover:scale-110 transition-transform duration-300",
-                  imageLoaded ? "opacity-100" : "opacity-0"
-                )}
-                loading={priority ? 'eager' : 'lazy'}
-                decoding="async"
-                fetchPriority={priority ? ('high' as any) : ('auto' as any)}
-                width={256}
-                height={256}
-                onLoad={() => setImageLoaded(true)}
-                onError={() => {
-                  if (gatewayTried === 'ipfs.io') {
-                    setGatewayTried('cloudflare');
-                    setSrcUrl(ipfsToHttp(nft.image, 'cloudflare'));
-                  } else {
-                    setImageError(true);
-                  }
-                }}
-              />
-            )}
-            {imageError && (
-              <div className="w-full h-full bg-slate-700/50 flex items-center justify-center">
-                <span className="text-slate-400 text-xs">No Image</span>
-              </div>
-            )}
+            <OptimizedImage
+              src={nft.image}
+              alt={nft.name}
+              className={cn(
+                "w-full h-full object-cover group-hover:scale-110 transition-transform duration-300",
+                imageLoaded ? "opacity-100" : "opacity-0"
+              )}
+              priority={priority}
+              size="thumbnail"
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+            />
           </div>
 
           {/* NFT Info */}
@@ -326,41 +458,21 @@ const NFTCard = React.memo(function NFTCard({ nft, viewMode, onClick, priority =
     >
       {/* NFT Image */}
       <div className="relative aspect-square overflow-hidden">
-        {!imageLoaded && !imageError && isVisible && (
+        {!imageLoaded && !imageError && (
           <LoadingSpinner />
         )}
-        {!imageLoaded && !imageError && !isVisible && (
-          <div className="w-full h-full bg-slate-700/50" />
-        )}
-        {!imageError && isVisible && (
-          <img
-            src={srcUrl}
-            alt={nft.name}
-            className={cn(
-              "w-full h-full object-cover group-hover:scale-110 transition-transform duration-500",
-              imageLoaded ? "opacity-100" : "opacity-0"
-            )}
-            loading={priority ? 'eager' : 'lazy'}
-            decoding="async"
-            fetchPriority={priority ? ('high' as any) : ('auto' as any)}
-            width={512}
-            height={512}
-            onLoad={() => setImageLoaded(true)}
-            onError={() => {
-              if (gatewayTried === 'ipfs.io') {
-                setGatewayTried('cloudflare');
-                setSrcUrl(ipfsToHttp(nft.image, 'cloudflare'));
-              } else {
-                setImageError(true);
-              }
-            }}
-          />
-        )}
-        {imageError && (
-          <div className="w-full h-full bg-slate-700/50 flex items-center justify-center">
-            <span className="text-slate-400">No Image</span>
-          </div>
-        )}
+        <OptimizedImage
+          src={nft.image}
+          alt={nft.name}
+          className={cn(
+            "w-full h-full object-cover group-hover:scale-110 transition-transform duration-500",
+            imageLoaded ? "opacity-100" : "opacity-0"
+          )}
+          priority={priority}
+          size="thumbnail"
+          onLoad={handleImageLoad}
+          onError={handleImageError}
+        />
 
         {/* Hover Actions */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
@@ -418,24 +530,55 @@ export default function ScavenjersCollectionPage() {
     }));
   }, [allNFTs]);
 
-  // Load NFT metadata
+  // Load NFT metadata with compression optimization
   useEffect(() => {
     async function loadMetadata() {
       setLoading(true);
       try {
-        const data = await import('../../../metadata-fixed.json');
-        let nfts: any[] = [];
-        if (Array.isArray(data)) {
-          nfts = data;
-        } else if (data && Array.isArray((data as any).default)) {
-          nfts = (data as any).default;
-        } else {
-          console.error('metadata-fixed.json import did not return an array:', data);
-          nfts = [];
+        // Request with compression headers for better performance
+        const response = await fetch('/metadata-fixed.json', {
+          headers: {
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Accept': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          // Fallback to import if fetch fails
+          const data = await import('../../../metadata-fixed.json');
+          let nfts: any[] = [];
+          if (Array.isArray(data)) {
+            nfts = data;
+          } else if (data && Array.isArray((data as any).default)) {
+            nfts = (data as any).default;
+          }
+          setAllNFTs(nfts);
+          return;
         }
-        setAllNFTs(nfts);
+        
+        const nfts = await response.json();
+        if (Array.isArray(nfts)) {
+          setAllNFTs(nfts);
+        } else {
+          console.error('Invalid metadata format:', nfts);
+          setAllNFTs([]);
+        }
       } catch (error) {
         console.error('Error loading NFT metadata:', error);
+        // Final fallback
+        try {
+          const data = await import('../../../metadata-fixed.json');
+          let nfts: any[] = [];
+          if (Array.isArray(data)) {
+            nfts = data;
+          } else if (data && Array.isArray((data as any).default)) {
+            nfts = (data as any).default;
+          }
+          setAllNFTs(nfts);
+        } catch (fallbackError) {
+          console.error('Fallback metadata loading failed:', fallbackError);
+          setAllNFTs([]);
+        }
       } finally {
         setLoading(false);
       }
@@ -817,10 +960,12 @@ export default function ScavenjersCollectionPage() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Image */}
                 <div className="aspect-square bg-slate-700/30 rounded-xl overflow-hidden">
-                  <img
-                    src={ipfsToHttp(selectedNFT.image)}
+                  <OptimizedImage
+                    src={selectedNFT.image}
                     alt={selectedNFT.name}
                     className="w-full h-full object-cover"
+                    priority={true}
+                    size="large"
                   />
                 </div>
 

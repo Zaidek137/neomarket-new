@@ -349,10 +349,69 @@ const LoadingSpinner = ({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) => {
       <div className="flex flex-col items-center gap-2">
         <Loader2 className={`${sizeClasses[size]} text-cyan-400 animate-spin`} />
         <div className="text-xs text-slate-400">Loading Eko...</div>
+                          </div>
+                  </div>
+  );
+};
+
+// Skeleton card component for smooth loading transitions
+const SkeletonCard = React.memo(({ viewMode }: { viewMode: 'grid' | 'list' }) => {
+  if (viewMode === 'list') {
+    return (
+      <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4 animate-pulse">
+        <div className="flex items-center gap-4">
+          {/* Skeleton Image */}
+          <div className="w-16 h-16 bg-slate-700/50 rounded-lg flex-shrink-0" />
+          
+          {/* Skeleton Info */}
+          <div className="flex-1 min-w-0">
+            <div className="h-4 bg-slate-700/50 rounded mb-2 w-3/4" />
+            <div className="h-3 bg-slate-700/30 rounded w-1/2" />
+          </div>
+          
+          {/* Skeleton Actions */}
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-slate-700/30 rounded-lg" />
+            <div className="w-8 h-8 bg-slate-700/30 rounded-lg" />
+          </div>
       </div>
     </div>
   );
-};
+}
+
+  return (
+    <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl overflow-hidden animate-pulse">
+      {/* Skeleton Image */}
+      <div className="aspect-square bg-slate-700/50" />
+      
+      {/* Skeleton Info */}
+      <div className="p-4">
+        <div className="h-4 bg-slate-700/50 rounded mb-2" />
+        <div className="flex items-center justify-between">
+          <div className="h-3 bg-slate-700/30 rounded w-1/2" />
+          <div className="h-3 bg-slate-700/30 rounded w-1/4" />
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// Grid of skeleton cards
+const SkeletonGrid = React.memo(({ count = 24, viewMode }: { count?: number; viewMode: 'grid' | 'list' }) => {
+  const skeletons = Array.from({ length: count }, (_, i) => (
+    <SkeletonCard key={`skeleton-${i}`} viewMode={viewMode} />
+  ));
+
+  if (viewMode === 'list') {
+    return <div className="space-y-2">{skeletons}</div>;
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+      {skeletons}
+    </div>
+  );
+});
 
 // Optimized image component with WebP/AVIF support and responsive sizing
 const OptimizedImage = React.memo(({ 
@@ -484,11 +543,11 @@ const NFTCard = React.memo(function NFTCard({ nft, viewMode, onClick, priority =
             )}
             <OptimizedImage
               src={nft.image}
-              alt={nft.name}
-              className={cn(
-                "w-full h-full object-cover group-hover:scale-110 transition-transform duration-300",
-                imageLoaded ? "opacity-100" : "opacity-0"
-              )}
+                alt={nft.name}
+                className={cn(
+                  "w-full h-full object-cover group-hover:scale-110 transition-transform duration-300",
+                  imageLoaded ? "opacity-100" : "opacity-0"
+                )}
               priority={priority}
               size="thumbnail"
               onLoad={handleImageLoad}
@@ -537,11 +596,11 @@ const NFTCard = React.memo(function NFTCard({ nft, viewMode, onClick, priority =
         )}
         <OptimizedImage
           src={nft.image}
-          alt={nft.name}
-          className={cn(
-            "w-full h-full object-cover group-hover:scale-110 transition-transform duration-500",
-            imageLoaded ? "opacity-100" : "opacity-0"
-          )}
+            alt={nft.name}
+            className={cn(
+              "w-full h-full object-cover group-hover:scale-110 transition-transform duration-500",
+              imageLoaded ? "opacity-100" : "opacity-0"
+            )}
           priority={priority}
           size="thumbnail"
           onLoad={handleImageLoad}
@@ -594,6 +653,8 @@ export default function ScavenjersCollectionPage() {
   const [activeTab, setActiveTab] = useState<'explore' | 'exchange' | 'holders' | 'about'>('explore');
   const [visibleCount, setVisibleCount] = useState(24); // Start with 24 items
   const [loadingMore, setLoadingMore] = useState(false);
+  const [showSkeletons, setShowSkeletons] = useState(false);
+  const [previousFilterState, setPreviousFilterState] = useState<string>('');
   
   // Performance optimization: Pre-compute trait maps for faster filtering
   const nftTraitMaps = useMemo(() => {
@@ -619,14 +680,14 @@ export default function ScavenjersCollectionPage() {
         
         if (!response.ok) {
           // Fallback to import if fetch fails
-          const data = await import('../../../metadata-fixed.json');
-          let nfts: any[] = [];
-          if (Array.isArray(data)) {
-            nfts = data;
-          } else if (data && Array.isArray((data as any).default)) {
-            nfts = (data as any).default;
-          }
-          setAllNFTs(nfts);
+        const data = await import('../../../metadata-fixed.json');
+        let nfts: any[] = [];
+        if (Array.isArray(data)) {
+          nfts = data;
+        } else if (data && Array.isArray((data as any).default)) {
+          nfts = (data as any).default;
+        }
+        setAllNFTs(nfts);
           return;
         }
         
@@ -679,6 +740,36 @@ export default function ScavenjersCollectionPage() {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
   const filterUpdateTimeoutRef = useRef<NodeJS.Timeout>();
+  const skeletonTimeoutRef = useRef<NodeJS.Timeout>();
+
+  // Track filter state changes to show immediate feedback
+  const currentFilterState = useMemo(() => {
+    const traitsKey = Object.entries(selectedTraits)
+      .map(([key, values]) => `${key}:${Array.from(values).sort().join(',')}`)
+      .sort()
+      .join('|');
+    return `${searchQuery}::${traitsKey}`;
+  }, [searchQuery, selectedTraits]);
+
+  // Immediately show skeletons when filter state changes
+  useEffect(() => {
+    if (previousFilterState && previousFilterState !== currentFilterState) {
+      // Show skeletons immediately when filters change
+      setShowSkeletons(true);
+      setVisibleCount(24); // Reset visible count
+      
+      // Clear any existing skeleton timeout
+      if (skeletonTimeoutRef.current) {
+        clearTimeout(skeletonTimeoutRef.current);
+      }
+      
+      // Hide skeletons after minimum display time to prevent flashing
+      skeletonTimeoutRef.current = setTimeout(() => {
+        setShowSkeletons(false);
+      }, 800); // Show skeletons for at least 800ms
+    }
+    setPreviousFilterState(currentFilterState);
+  }, [currentFilterState, previousFilterState]);
 
   // Debounce search input with faster response for short queries
   useEffect(() => {
@@ -747,14 +838,33 @@ export default function ScavenjersCollectionPage() {
       });
     }
 
+    const result = filtered.map(item => item.nft);
+
     // Use requestIdleCallback for non-blocking state update
     if ('requestIdleCallback' in window) {
-      requestIdleCallback(() => setFiltering(false));
+      requestIdleCallback(() => {
+        setFiltering(false);
+        // Hide skeletons when filtering is complete and we have results
+        if (result.length > 0) {
+          setShowSkeletons(false);
+          if (skeletonTimeoutRef.current) {
+            clearTimeout(skeletonTimeoutRef.current);
+          }
+        }
+      });
     } else {
-      setTimeout(() => setFiltering(false), 0);
+      setTimeout(() => {
+        setFiltering(false);
+        if (result.length > 0) {
+          setShowSkeletons(false);
+          if (skeletonTimeoutRef.current) {
+            clearTimeout(skeletonTimeoutRef.current);
+          }
+        }
+      }, 0);
     }
     
-    return filtered.map(item => item.nft);
+    return result;
   }, [nftTraitMaps, debouncedSearchQuery, selectedTraits]);
 
   // Memoize expensive operations for better performance
@@ -884,9 +994,9 @@ export default function ScavenjersCollectionPage() {
               {/* Results Count */}
               <div className="flex items-center gap-2">
                 {filtering && <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />}
-                <span className="text-sm text-slate-500">
+              <span className="text-sm text-slate-500">
                   {filtering ? 'Filtering...' : `${collectionStats.totalItems} items`}
-                </span>
+              </span>
               </div>
             </div>
 
@@ -943,14 +1053,26 @@ export default function ScavenjersCollectionPage() {
           
           {activeTab === 'explore' && (
             <>
-              {filteredNFTs.length > 0 ? (
+              {/* Show skeletons immediately when filtering starts */}
+              {showSkeletons ? (
                 <div className="relative">
-                  {/* Filtering overlay */}
+                  <SkeletonGrid count={visibleCount} viewMode={viewMode} />
+                  {/* Filtering status overlay */}
+                  <div className="absolute top-4 right-4 bg-slate-800/90 backdrop-blur-sm rounded-lg px-3 py-2 border border-slate-600/50">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
+                      <span className="text-sm text-slate-300">Filtering Ekos...</span>
+                    </div>
+                  </div>
+                </div>
+              ) : filteredNFTs.length > 0 ? (
+                <div className="relative">
+                  {/* Secondary filtering overlay for heavy operations */}
                   {filtering && (
-                    <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-xl">
-                      <div className="text-center">
-                        <Loader2 className="w-8 h-8 text-cyan-400 animate-spin mx-auto mb-2" />
-                        <p className="text-slate-300">Filtering Ekos...</p>
+                    <div className="absolute top-4 right-4 bg-slate-800/90 backdrop-blur-sm rounded-lg px-3 py-2 border border-slate-600/50 z-10">
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
+                        <span className="text-sm text-slate-300">Finalizing...</span>
                       </div>
                     </div>
                   )}

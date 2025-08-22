@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ExchangePage from '../Exchange/ExchangePage';
 import { 
@@ -231,32 +231,92 @@ const LoadingSpinner = ({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) => {
   );
 };
 
+// Virtual grid component for performance
+const VirtualGrid = ({ 
+  items, 
+  renderItem, 
+  containerHeight = 600,
+  itemHeight = 320,
+  itemsPerRow = 6,
+  gap = 16 
+}: {
+  items: any[];
+  renderItem: (item: any, index: number) => React.ReactNode;
+  containerHeight?: number;
+  itemHeight?: number;
+  itemsPerRow?: number;
+  gap?: number;
+}) => {
+  const [scrollTop, setScrollTop] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  const totalRows = Math.ceil(items.length / itemsPerRow);
+  const totalHeight = totalRows * (itemHeight + gap);
+  
+  const visibleStart = Math.floor(scrollTop / (itemHeight + gap));
+  const visibleEnd = Math.min(
+    totalRows,
+    Math.ceil((scrollTop + containerHeight) / (itemHeight + gap)) + 1
+  );
+  
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    setScrollTop(e.currentTarget.scrollTop);
+  }, []);
+  
+  const visibleItems = useMemo(() => {
+    const result = [];
+    for (let row = visibleStart; row < visibleEnd; row++) {
+      const startIndex = row * itemsPerRow;
+      const endIndex = Math.min(startIndex + itemsPerRow, items.length);
+      for (let i = startIndex; i < endIndex; i++) {
+        result.push({
+          item: items[i],
+          index: i,
+          row,
+          col: i % itemsPerRow,
+          top: row * (itemHeight + gap)
+        });
+      }
+    }
+    return result;
+  }, [items, visibleStart, visibleEnd, itemsPerRow, itemHeight, gap]);
+  
+  return (
+    <div 
+      ref={containerRef}
+      className="overflow-auto"
+      style={{ height: containerHeight }}
+      onScroll={handleScroll}
+    >
+      <div style={{ height: totalHeight, position: 'relative' }}>
+        {visibleItems.map(({ item, index, top, col }) => (
+          <div
+            key={`${item.id}-${index}`}
+            style={{
+              position: 'absolute',
+              top,
+              left: col * (100 / itemsPerRow) + '%',
+              width: `calc(${100 / itemsPerRow}% - ${gap}px)`,
+              height: itemHeight
+            }}
+          >
+            {renderItem(item, index)}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const NFTCard = React.memo(function NFTCard({ nft, viewMode, onClick, priority = false }: { nft: NFT; viewMode: 'grid' | 'list'; onClick: () => void; priority?: boolean }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [gatewayTried, setGatewayTried] = useState<'ipfs.io' | 'cloudflare'>('ipfs.io');
   const [srcUrl, setSrcUrl] = useState<string>(ipfsToHttp(nft.image, 'ipfs.io'));
-  const [isVisible, setIsVisible] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Intersection observer for lazy loading
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1, rootMargin: '50px' }
-    );
-
-    if (cardRef.current) {
-      observer.observe(cardRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
+  // Images load immediately since virtual grid handles visibility
+  const isVisible = true;
 
   if (viewMode === 'list') {
     return (
@@ -420,9 +480,10 @@ export default function ScavenjersCollectionPage() {
   const [showFilters, setShowFilters] = useState(true);
   const [selectedTraits, setSelectedTraits] = useState<{ [trait: string]: Set<string> }>({});
   const [selectedNFT, setSelectedNFT] = useState<NFT | null>(null);
-  const [page, setPage] = useState(1);
-  const pageSize = 60;
   const [activeTab, setActiveTab] = useState<'explore' | 'exchange' | 'holders' | 'about'>('explore');
+  const [containerHeight, setContainerHeight] = useState(600);
+  const [itemsPerRow, setItemsPerRow] = useState(6);
+  const containerRef = useRef<HTMLDivElement>(null);
   
   // Performance optimization: Pre-compute trait maps for faster filtering
   const nftTraitMaps = useMemo(() => {
@@ -432,6 +493,31 @@ export default function ScavenjersCollectionPage() {
       searchText: nft.name.toLowerCase()
     }));
   }, [allNFTs]);
+
+  // Responsive grid calculations
+  useEffect(() => {
+    const updateLayout = () => {
+      if (containerRef.current) {
+        const container = containerRef.current;
+        const containerWidth = container.offsetWidth;
+        const availableHeight = window.innerHeight - container.getBoundingClientRect().top - 100;
+        
+        setContainerHeight(Math.max(400, availableHeight));
+        
+        // Calculate items per row based on screen width
+        if (containerWidth >= 1536) setItemsPerRow(6); // 2xl
+        else if (containerWidth >= 1280) setItemsPerRow(5); // xl
+        else if (containerWidth >= 1024) setItemsPerRow(4); // lg
+        else if (containerWidth >= 768) setItemsPerRow(3); // md
+        else if (containerWidth >= 640) setItemsPerRow(2); // sm
+        else setItemsPerRow(1); // mobile
+      }
+    };
+
+    updateLayout();
+    window.addEventListener('resize', updateLayout);
+    return () => window.removeEventListener('resize', updateLayout);
+  }, [showFilters]);
 
   // Load NFT metadata
   useEffect(() => {
@@ -520,37 +606,16 @@ export default function ScavenjersCollectionPage() {
     return filtered.map(item => item.nft);
   }, [nftTraitMaps, debouncedSearchQuery, selectedTraits]);
 
-  // Reset page on filter/search change - optimize dependency tracking
-  const selectedTraitsKey = useMemo(() => {
-    return Object.entries(selectedTraits)
-      .map(([key, values]) => `${key}:${Array.from(values).sort().join(',')}`)
-      .sort()
-      .join('|');
-  }, [selectedTraits]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [debouncedSearchQuery, selectedTraitsKey]);
-
-  // Current page slice
-  const paginatedNFTs = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredNFTs.slice(start, start + pageSize);
-  }, [filteredNFTs, page]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredNFTs.length / pageSize));
-
-  // Preload a subset of next page images
-  useEffect(() => {
-    const start = page * pageSize;
-    const nextBatch = filteredNFTs.slice(start, start + 24);
-    nextBatch.forEach(n => {
-      const img = new Image();
-      img.loading = 'eager';
-      img.decoding = 'async' as any;
-      img.src = ipfsToHttp(n.image);
-    });
-  }, [page, filteredNFTs]);
+  // NFT card renderer for virtual grid
+  const renderNFTCard = useCallback((nft: NFT, index: number) => (
+    <NFTCard
+      key={nft.id}
+      nft={nft}
+      viewMode={viewMode}
+      onClick={() => setSelectedNFT(nft)}
+      priority={index < 20} // Prioritize first 20 items
+    />
+  ), [viewMode, setSelectedNFT]);
 
   if (loading) {
     return (
@@ -696,7 +761,7 @@ export default function ScavenjersCollectionPage() {
         )}
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto scrollbar-hide">
+        <div ref={containerRef} className="flex-1 overflow-hidden">
           {activeTab === 'exchange' && (
             <ExchangePage />
           )}
@@ -704,7 +769,7 @@ export default function ScavenjersCollectionPage() {
           {activeTab === 'explore' && (
             <>
               {filteredNFTs.length > 0 ? (
-                <div className="relative">
+                <div className="relative h-full">
                   {/* Filtering overlay */}
                   {filtering && (
                     <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-xl">
@@ -716,57 +781,26 @@ export default function ScavenjersCollectionPage() {
                   )}
                   
                   {viewMode === 'grid' ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-                      {paginatedNFTs.map((nft, i) => (
-                        <NFTCard
-                          key={nft.id}
-                          nft={nft}
-                          viewMode={viewMode}
-                          onClick={() => setSelectedNFT(nft)}
-                          priority={i < 6}
-                        />
-                      ))}
-                    </div>
+                    <VirtualGrid
+                      items={filteredNFTs}
+                      renderItem={renderNFTCard}
+                      containerHeight={containerHeight}
+                      itemHeight={320}
+                      itemsPerRow={itemsPerRow}
+                      gap={16}
+                    />
                   ) : (
-                    <div className="space-y-2">
-                      {paginatedNFTs.map((nft, i) => (
+                    // For list view, use simpler virtual scrolling since items are uniform
+                    <div className="space-y-2 overflow-auto" style={{ height: containerHeight }}>
+                      {filteredNFTs.map((nft, i) => (
                         <NFTCard
                           key={nft.id}
                           nft={nft}
                           viewMode={viewMode}
                           onClick={() => setSelectedNFT(nft)}
-                          priority={i < 6}
+                          priority={i < 20}
                         />
                       ))}
-                    </div>
-                  )}
-
-                  {/* Pagination Controls */}
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-center gap-2 pt-6">
-                      <button
-                        onClick={() => setPage(p => Math.max(1, p - 1))}
-                        disabled={page === 1}
-                        className={cn(
-                          "px-3 py-2 rounded-lg text-sm",
-                          page === 1 ? "bg-slate-800/40 text-slate-500 cursor-not-allowed" : "bg-slate-700/50 hover:bg-slate-600/50 text-white"
-                        )}
-                      >
-                        Prev
-                      </button>
-                      <span className="text-slate-400 text-sm">
-                        Page <span className="text-white">{page}</span> of <span className="text-white">{totalPages}</span>
-                      </span>
-                      <button
-                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                        disabled={page === totalPages}
-                        className={cn(
-                          "px-3 py-2 rounded-lg text-sm",
-                          page === totalPages ? "bg-slate-800/40 text-slate-500 cursor-not-allowed" : "bg-slate-700/50 hover:bg-slate-600/50 text-white"
-                        )}
-                      >
-                        Next
-                      </button>
                     </div>
                   )}
                 </div>

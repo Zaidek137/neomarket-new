@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ExchangePage from '../Exchange/ExchangePage';
 import { 
@@ -12,19 +12,32 @@ import {
   Badge,
   Heart,
   ShoppingCart,
-  Eye
+  Eye,
+  Loader2
 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 
-// IPFS helper function
+// Image cache for better performance
+const imageCache = new Map<string, string>();
+
+// IPFS helper function with caching
 function ipfsToHttp(url: string, gateway: 'ipfs.io' | 'cloudflare' = 'ipfs.io') {
   if (!url) return '';
+  
+  const cacheKey = `${url}-${gateway}`;
+  if (imageCache.has(cacheKey)) {
+    return imageCache.get(cacheKey)!;
+  }
+  
+  let result = url;
   if (url.startsWith('ipfs://')) {
     const base = gateway === 'ipfs.io' ? 'https://ipfs.io/ipfs/' : 'https://cloudflare-ipfs.com/ipfs/';
-    return url.replace('ipfs://', base);
+    result = url.replace('ipfs://', base);
   }
-  return url;
+  
+  imageCache.set(cacheKey, result);
+  return result;
 }
 
 interface NFTTrait {
@@ -200,25 +213,68 @@ function TraitsFilter({
   );
 }
 
+// Enhanced loading animation
+const LoadingSpinner = ({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) => {
+  const sizeClasses = {
+    sm: 'w-4 h-4',
+    md: 'w-6 h-6', 
+    lg: 'w-8 h-8'
+  };
+  
+  return (
+    <div className="absolute inset-0 flex items-center justify-center bg-slate-800/50 backdrop-blur-sm">
+      <div className="flex flex-col items-center gap-2">
+        <Loader2 className={`${sizeClasses[size]} text-cyan-400 animate-spin`} />
+        <div className="text-xs text-slate-400">Loading Eko...</div>
+      </div>
+    </div>
+  );
+};
+
 const NFTCard = React.memo(function NFTCard({ nft, viewMode, onClick, priority = false }: { nft: NFT; viewMode: 'grid' | 'list'; onClick: () => void; priority?: boolean }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [gatewayTried, setGatewayTried] = useState<'ipfs.io' | 'cloudflare'>('ipfs.io');
   const [srcUrl, setSrcUrl] = useState<string>(ipfsToHttp(nft.image, 'ipfs.io'));
+  const [isVisible, setIsVisible] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Intersection observer for lazy loading
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1, rootMargin: '50px' }
+    );
+
+    if (cardRef.current) {
+      observer.observe(cardRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
 
   if (viewMode === 'list') {
     return (
       <div
+        ref={cardRef}
         onClick={onClick}
         className="group cursor-pointer bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4 hover:bg-slate-700/30 hover:border-slate-600/50 transition-all duration-300"
       >
         <div className="flex items-center gap-4">
           {/* NFT Image */}
           <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
-            {!imageLoaded && !imageError && (
-              <div className="w-full h-full bg-slate-700/50 animate-pulse" />
+            {!imageLoaded && !imageError && isVisible && (
+              <LoadingSpinner size="sm" />
             )}
-            {!imageError && (
+            {!imageLoaded && !imageError && !isVisible && (
+              <div className="w-full h-full bg-slate-700/50" />
+            )}
+            {!imageError && isVisible && (
               <img
                 src={srcUrl}
                 alt={nft.name}
@@ -276,6 +332,7 @@ const NFTCard = React.memo(function NFTCard({ nft, viewMode, onClick, priority =
 
   return (
     <motion.div
+      ref={cardRef}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       onClick={onClick}
@@ -284,10 +341,13 @@ const NFTCard = React.memo(function NFTCard({ nft, viewMode, onClick, priority =
     >
       {/* NFT Image */}
       <div className="relative aspect-square overflow-hidden">
-        {!imageLoaded && !imageError && (
-          <div className="w-full h-full bg-slate-700/50 animate-pulse" />
+        {!imageLoaded && !imageError && isVisible && (
+          <LoadingSpinner />
         )}
-        {!imageError && (
+        {!imageLoaded && !imageError && !isVisible && (
+          <div className="w-full h-full bg-slate-700/50" />
+        )}
+        {!imageError && isVisible && (
           <img
             src={srcUrl}
             alt={nft.name}
@@ -354,6 +414,7 @@ export default function ScavenjersCollectionPage() {
   useParams();
   const [allNFTs, setAllNFTs] = useState<NFT[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filtering, setFiltering] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(true);
@@ -362,6 +423,15 @@ export default function ScavenjersCollectionPage() {
   const [page, setPage] = useState(1);
   const pageSize = 60;
   const [activeTab, setActiveTab] = useState<'explore' | 'exchange' | 'holders' | 'about'>('explore');
+  
+  // Performance optimization: Pre-compute trait maps for faster filtering
+  const nftTraitMaps = useMemo(() => {
+    return allNFTs.map(nft => ({
+      nft,
+      traitMap: new Map((nft.attributes || []).map(attr => [attr.trait_type, attr.value])),
+      searchText: nft.name.toLowerCase()
+    }));
+  }, [allNFTs]);
 
   // Load NFT metadata
   useEffect(() => {
@@ -403,39 +473,64 @@ export default function ScavenjersCollectionPage() {
     return traitsMap;
   }, [allNFTs]);
 
-  // Filter NFTs based on search and traits
-  const filteredNFTs = useMemo(() => {
-    let filtered = allNFTs;
+  // Debounced filtering for better performance
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const searchTimeoutRef = useRef<NodeJS.Timeout>();
 
-    // Search filter
-    if (searchQuery) {
-      filtered = filtered.filter(nft =>
-        nft.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchQuery]);
+
+  // Optimized filter function with better performance
+  const filteredNFTs = useMemo(() => {
+    setFiltering(true);
+    
+    let filtered = nftTraitMaps;
+
+    // Search filter - use pre-computed lowercase text
+    if (debouncedSearchQuery) {
+      const query = debouncedSearchQuery.toLowerCase();
+      filtered = filtered.filter(item => item.searchText.includes(query));
     }
 
-    // Traits filter
-    for (const trait in selectedTraits) {
-      const selectedValues = selectedTraits[trait];
+    // Traits filter - use pre-computed trait maps
+    for (const [trait, selectedValues] of Object.entries(selectedTraits)) {
       if (selectedValues.size > 0) {
-        filtered = filtered.filter(nft => {
-          const nftTraitValues = new Set(
-            (nft.attributes || [])
-              .filter(t => t.trait_type === trait)
-              .map(t => t.value)
-          );
-          return [...selectedValues].some(v => nftTraitValues.has(v));
+        filtered = filtered.filter(item => {
+          const nftValue = item.traitMap.get(trait);
+          return nftValue && selectedValues.has(nftValue);
         });
       }
     }
 
-    return filtered;
-  }, [allNFTs, searchQuery, selectedTraits]);
+    // Use setTimeout to update filtering state after render
+    setTimeout(() => setFiltering(false), 0);
+    
+    return filtered.map(item => item.nft);
+  }, [nftTraitMaps, debouncedSearchQuery, selectedTraits]);
 
-  // Reset page on filter/search change
+  // Reset page on filter/search change - optimize dependency tracking
+  const selectedTraitsKey = useMemo(() => {
+    return Object.entries(selectedTraits)
+      .map(([key, values]) => `${key}:${Array.from(values).sort().join(',')}`)
+      .sort()
+      .join('|');
+  }, [selectedTraits]);
+
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, JSON.stringify(selectedTraits)]);
+  }, [debouncedSearchQuery, selectedTraitsKey]);
 
   // Current page slice
   const paginatedNFTs = useMemo(() => {
@@ -547,9 +642,12 @@ export default function ScavenjersCollectionPage() {
               </button>
 
               {/* Results Count */}
-              <span className="text-sm text-slate-500">
-                {filteredNFTs.length} items
-              </span>
+              <div className="flex items-center gap-2">
+                {filtering && <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />}
+                <span className="text-sm text-slate-500">
+                  {filtering ? 'Filtering...' : `${filteredNFTs.length} items`}
+                </span>
+              </div>
             </div>
 
             {/* Right Controls */}
@@ -606,7 +704,17 @@ export default function ScavenjersCollectionPage() {
           {activeTab === 'explore' && (
             <>
               {filteredNFTs.length > 0 ? (
-                <div>
+                <div className="relative">
+                  {/* Filtering overlay */}
+                  {filtering && (
+                    <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-xl">
+                      <div className="text-center">
+                        <Loader2 className="w-8 h-8 text-cyan-400 animate-spin mx-auto mb-2" />
+                        <p className="text-slate-300">Filtering Ekos...</p>
+                      </div>
+                    </div>
+                  )}
+                  
                   {viewMode === 'grid' ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                       {paginatedNFTs.map((nft, i) => (

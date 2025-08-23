@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { client } from '../client';
 import { NFT_COLLECTION_ADDRESS, CONTRACT_ADDRESS, NATIVE_TOKEN_ADDRESS } from '../config/constants';
 import { useCryptoPrice } from '../hooks/useCryptoPrice';
+import { ipfsToHttp } from '../lib/ipfs';
 
 interface OwnedEko {
   tokenId: string;
@@ -64,13 +65,18 @@ export default function MyEkosPage() {
       console.log('Found NFTs:', ownedNFTs.length);
 
       // Transform NFT data to our format
-      const formattedEkos = ownedNFTs.map((nft) => ({
-        tokenId: nft.id.toString(),
-        name: nft.metadata?.name || `Eko #${nft.id}`,
-        image: nft.metadata?.image || '',
-        description: nft.metadata?.description || '',
-        attributes: (nft.metadata?.attributes as any[]) || []
-      }));
+      const formattedEkos = ownedNFTs.map((nft) => {
+        const imageUrl = nft.metadata?.image || '';
+        console.log('NFT Image URL:', imageUrl, '-> Converted:', ipfsToHttp(imageUrl));
+        
+        return {
+          tokenId: nft.id.toString(),
+          name: nft.metadata?.name || `Eko #${nft.id}`,
+          image: imageUrl,
+          description: nft.metadata?.description || '',
+          attributes: (nft.metadata?.attributes as any[]) || []
+        };
+      });
 
       setOwnedEkos(formattedEkos);
       
@@ -162,7 +168,7 @@ export default function MyEkosPage() {
                 <div className="w-16 h-16 rounded-lg overflow-hidden bg-slate-700 flex-shrink-0">
                   {selectedEko.image ? (
                     <img 
-                      src={selectedEko.image} 
+                      src={ipfsToHttp(selectedEko.image)} 
                       alt={selectedEko.name}
                       className="w-full h-full object-cover"
                     />
@@ -244,21 +250,37 @@ export default function MyEkosPage() {
     );
   };
 
-  const EkoCard = ({ eko }: { eko: OwnedEko }) => (
-    <div className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden hover:bg-slate-800/70 transition-colors">
-      {/* Image */}
-      <div className="aspect-square bg-slate-700 relative">
-        {eko.image ? (
-          <img 
-            src={eko.image} 
-            alt={eko.name}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-slate-500">
-            <User size={48} />
-          </div>
-        )}
+  const EkoCard = ({ eko }: { eko: OwnedEko }) => {
+    const [imageError, setImageError] = useState(false);
+    const [imageLoading, setImageLoading] = useState(true);
+
+    return (
+      <div className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden hover:bg-slate-800/70 transition-colors">
+        {/* Image */}
+        <div className="aspect-square bg-slate-700 relative">
+          {eko.image && !imageError ? (
+            <>
+              {imageLoading && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
+                </div>
+              )}
+              <img 
+                src={ipfsToHttp(eko.image)} 
+                alt={eko.name}
+                className="w-full h-full object-cover"
+                onLoad={() => setImageLoading(false)}
+                onError={() => {
+                  setImageError(true);
+                  setImageLoading(false);
+                }}
+              />
+            </>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-slate-500">
+              <User size={48} />
+            </div>
+          )}
         
         {/* Action Buttons Overlay */}
         <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
@@ -305,7 +327,8 @@ export default function MyEkosPage() {
         )}
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6 p-6">

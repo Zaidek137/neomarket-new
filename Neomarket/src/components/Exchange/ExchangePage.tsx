@@ -229,21 +229,48 @@ export default function ExchangePage() {
   }, [listings, searchQuery, filters, sortBy]);
 
   return (
-    <div className="px-3 py-4 space-y-4 max-w-full overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white mb-1">The Exchange</h1>
-          <p className="text-slate-400 text-sm">Buy and sell individual Ekos</p>
+    <div className="max-w-full overflow-hidden">
+      {/* Full-width Header Image */}
+      <div className="relative h-[200px] sm:h-[240px] lg:h-[280px] w-full overflow-hidden rounded-xl mb-6">
+        {/* Background Image */}
+        <div className="absolute inset-0">
+          <img
+            src="https://zrolrdnymkkdcyksuctq.supabase.co/storage/v1/object/public/Gallery/Homepage%20Images/The%20Exchange.png"
+            alt="The Exchange"
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              // Fallback to text if image fails to load
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              const fallback = document.createElement('div');
+              fallback.innerHTML = '<h1 class="text-3xl font-bold text-white text-center">The Exchange</h1>';
+              fallback.className = 'absolute inset-0 flex items-center justify-center bg-slate-800';
+              target.parentNode?.appendChild(fallback);
+            }}
+          />
+          {/* Dark overlay for better text readability */}
+          <div className="absolute inset-0 bg-black/20" />
         </div>
-        <button
-          onClick={() => setShowListModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:from-cyan-600 hover:to-blue-700 transition-all duration-300 font-medium"
-        >
-          <Plus size={18} />
-          List Eko
-        </button>
+
+        {/* Content Overlay */}
+        <div className="absolute inset-0 flex items-end justify-between p-4 sm:p-6">
+          <div>
+            <p className="text-white/90 text-sm sm:text-base font-medium bg-black/30 backdrop-blur-sm px-3 py-1 rounded-lg">
+              Buy and sell individual Ekos
+            </p>
+          </div>
+          <button
+            onClick={() => setShowListModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:from-cyan-600 hover:to-blue-700 transition-all duration-300 font-medium shadow-lg backdrop-blur-sm"
+          >
+            <Plus size={18} />
+            List Eko
+          </button>
+        </div>
       </div>
+
+      {/* Main Content Container */}
+      <div className="px-3 py-4 space-y-4">
 
       {/* Controls Bar */}
       <div className="flex items-center justify-between gap-4">
@@ -373,6 +400,7 @@ export default function ExchangePage() {
           polPrice={polPrice || null}
         />
       )}
+      </div>
     </div>
   );
 }

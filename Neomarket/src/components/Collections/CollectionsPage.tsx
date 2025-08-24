@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search, Grid3X3, List, SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import FilterSidebar from './FilterSidebar';
@@ -43,13 +43,30 @@ export default function CollectionsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState('floor');
-  const [showFilters, setShowFilters] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showFilters, setShowFilters] = useState(false); // Start with filters hidden
   const [filters, setFilters] = useState({
     verified: 'all', // 'all', 'verified', 'unverified'
     categories: [] as string[],
     priceRange: { min: '', max: '' },
     itemRange: { min: '', max: '' }
   });
+
+  // Mobile detection
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      // On mobile, keep filters hidden by default, on desktop show them
+      if (!mobile) {
+        setShowFilters(true);
+      }
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const filteredCollections = useMemo(() => {
     const collections = [mainCollection];

@@ -19,7 +19,7 @@ import {
   Plus
 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
-import { cn, RarityCalculator } from '../../lib/utils';
+import { cn } from '../../lib/utils';
 import { ipfsToHttp, generateOptimizedImageSources, preWarmAssets } from '../../lib/ipfs';
 import { rarityService } from '../../services/rarityService';
 import type { NFTRarity } from '../../types/marketplace';
@@ -497,7 +497,7 @@ const OptimizedImage = React.memo(({
 
 
 
-const NFTCard = React.memo(function NFTCard({ nft, viewMode, onClick, priority = false }: { nft: NFT; viewMode: 'grid' | 'list'; onClick: () => void; priority?: boolean }) {
+const NFTCard = React.memo(function NFTCard({ nft, viewMode, onClick, priority = false, isMobile = false }: { nft: NFT; viewMode: 'grid' | 'list'; onClick: () => void; priority?: boolean; isMobile?: boolean }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -589,31 +589,36 @@ const NFTCard = React.memo(function NFTCard({ nft, viewMode, onClick, priority =
           onError={handleImageError}
         />
 
-        {/* Hover Actions */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
-          <div className="flex items-center gap-2">
-            <button className="p-2 rounded-lg bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-colors">
-              <Eye size={16} className="text-white" />
-            </button>
-            <button className="p-2 rounded-lg bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-colors">
-              <Heart size={16} className="text-white" />
-            </button>
-            <button className="p-2 rounded-lg bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-colors">
-              <ShoppingCart size={16} className="text-white" />
-            </button>
+        {/* Hover Actions - Hidden on mobile for better touch experience */}
+        {!isMobile && (
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
+            <div className="flex items-center gap-2">
+              <button className="p-2 rounded-lg bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-colors">
+                <Eye size={16} className="text-white" />
+              </button>
+              <button className="p-2 rounded-lg bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-colors">
+                <Heart size={16} className="text-white" />
+              </button>
+              <button className="p-2 rounded-lg bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-colors">
+                <ShoppingCart size={16} className="text-white" />
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* NFT Info */}
-      <div className="p-4">
-        <h3 className="font-semibold text-white truncate group-hover:text-cyan-300 transition-colors mb-1">
+      <div className={cn("p-4", isMobile && "p-2")}>
+        <h3 className={cn(
+          "font-semibold text-white truncate group-hover:text-cyan-300 transition-colors mb-1",
+          isMobile && "text-sm"
+        )}>
           {nft.name}
         </h3>
-        <div className="flex items-center justify-between text-sm">
+        <div className={cn("flex items-center justify-between text-sm", isMobile && "text-xs")}>
           <div className="flex items-center gap-1">
             <span className="text-slate-400">The Scavenjers</span>
-            <Badge size={12} className="text-cyan-400" />
+            <Badge size={isMobile ? 8 : 12} className="text-cyan-400" />
           </div>
           <span className="text-slate-500">#{nft.id}</span>
         </div>
@@ -629,7 +634,8 @@ export default function ScavenjersCollectionPage() {
   const [filtering, setFiltering] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [showFilters, setShowFilters] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showFilters, setShowFilters] = useState(false); // Start with filters hidden
   const [selectedTraits, setSelectedTraits] = useState<{ [trait: string]: Set<string> }>({});
   const [selectedRarityTiers, setSelectedRarityTiers] = useState<NFTRarity['rarity_tier'][]>([]);
   const [rarityData, setRarityData] = useState<any>(null);
@@ -645,6 +651,22 @@ export default function ScavenjersCollectionPage() {
   const [purchaseQuantity, setPurchaseQuantity] = useState(1);
   const [showCrossmintModal, setShowCrossmintModal] = useState(false);
   
+  // Mobile detection
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      // On mobile, keep filters hidden by default, on desktop show them
+      if (!mobile) {
+        setShowFilters(true);
+      }
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   // Prevent page scrolling beyond the collection view while allowing internal scrolling
   useEffect(() => {
     // Set body and html to prevent page-level overflow scrolling
@@ -1249,7 +1271,12 @@ export default function ScavenjersCollectionPage() {
                   )}
                   
                   {viewMode === 'grid' ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                    <div className={cn(
+                      "grid gap-3",
+                      isMobile 
+                        ? "grid-cols-3 gap-2" // Mobile: 3 columns, smaller gaps
+                        : "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4" // Desktop: original layout
+                    )}>
                       {visibleNFTs.map((nft, i) => (
                         <NFTCard
                           key={nft.id}
@@ -1257,6 +1284,7 @@ export default function ScavenjersCollectionPage() {
                           viewMode={viewMode}
                           onClick={() => setSelectedNFT(nft)}
                           priority={i < 12} // First 12 items get priority loading
+                          isMobile={isMobile}
                         />
                       ))}
                     </div>
@@ -1269,6 +1297,7 @@ export default function ScavenjersCollectionPage() {
                           viewMode={viewMode}
                           onClick={() => setSelectedNFT(nft)}
                           priority={i < 12}
+                          isMobile={isMobile}
                         />
                       ))}
                     </div>

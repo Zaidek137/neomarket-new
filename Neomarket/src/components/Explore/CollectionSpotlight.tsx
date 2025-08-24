@@ -179,7 +179,7 @@ export default function CollectionSpotlight() {
       </div>
 
       {/* Badge */}
-      <div className="absolute top-2 sm:top-3 lg:top-4 left-2 sm:left-3 lg:left-4 bg-cyan-500/90 backdrop-blur-sm px-2 sm:px-3 py-0.5 sm:py-1 rounded-full">
+      <div className="absolute top-4 sm:top-3 lg:top-4 right-2 sm:left-3 lg:left-4 bg-cyan-500/90 backdrop-blur-sm px-2 sm:px-3 py-0.5 sm:py-1 rounded-full">
         <span className="text-white font-medium text-[10px] sm:text-xs">🚀 New Launch</span>
       </div>
 

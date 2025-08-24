@@ -19,8 +19,11 @@ import {
   Plus
 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
-import { cn } from '../../lib/utils';
+import { cn, RarityCalculator } from '../../lib/utils';
 import { ipfsToHttp, generateOptimizedImageSources, preWarmAssets } from '../../lib/ipfs';
+import { rarityService } from '../../services/rarityService';
+import type { NFTRarity } from '../../types/marketplace';
+import RarityFilter from './RarityFilter';
 
 // ⚡ PINATA GATEWAY OPTIMIZATION ⚡
 // Old IPFS functions replaced with optimized Pinata gateway system  
@@ -206,11 +209,17 @@ const TraitCategory = React.memo(({
 const TraitsFilter = React.memo(({ 
   collectionTraits, 
   selectedTraits, 
-  onTraitsChange 
+  onTraitsChange,
+  selectedRarityTiers,
+  onRarityTiersChange,
+  tierCounts
 }: {
   collectionTraits: { [trait: string]: { [value: string]: number } };
   selectedTraits: { [trait: string]: Set<string> };
   onTraitsChange: (traits: { [trait: string]: Set<string> }) => void;
+  selectedRarityTiers: NFTRarity['rarity_tier'][];
+  onRarityTiersChange: (tiers: NFTRarity['rarity_tier'][]) => void;
+  tierCounts: { [tier: string]: number };
 }) => {
   const [openCategories, setOpenCategories] = useState<{ [trait: string]: boolean }>({});
 
@@ -286,6 +295,13 @@ const TraitsFilter = React.memo(({
 
       {/* Trait Categories - Scrollable */}
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3 scrollbar-hide">
+        {/* Rarity Filter */}
+        <RarityFilter
+          selectedTiers={selectedRarityTiers}
+          onTiersChange={onRarityTiersChange}
+          tierCounts={tierCounts}
+        />
+        
         {traitsEntries.map(([trait, values]) => (
           <TraitCategory
             key={trait}
@@ -615,6 +631,9 @@ export default function ScavenjersCollectionPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(true);
   const [selectedTraits, setSelectedTraits] = useState<{ [trait: string]: Set<string> }>({});
+  const [selectedRarityTiers, setSelectedRarityTiers] = useState<NFTRarity['rarity_tier'][]>([]);
+  const [rarityData, setRarityData] = useState<any>(null);
+  const [tierCounts, setTierCounts] = useState<{ [tier: string]: number }>({});
   const [selectedNFT, setSelectedNFT] = useState<NFT | null>(null);
   const [activeTab, setActiveTab] = useState<'explore' | 'exchange' | 'holders' | 'about'>('explore');
   const [visibleCount, setVisibleCount] = useState(36); // Start with 36 items for larger collection
@@ -727,6 +746,24 @@ export default function ScavenjersCollectionPage() {
     loadMetadata();
   }, []);
 
+  // Calculate rarity data when NFTs are loaded
+  useEffect(() => {
+    if (allNFTs.length > 0) {
+      const calculateRarity = async () => {
+        try {
+          const collectionId = 'scavenjers';
+          const rarityCollection = await rarityService.getCollectionRarity(collectionId, allNFTs);
+          const counts = rarityService.getTierCounts(collectionId);
+          setRarityData(rarityCollection);
+          setTierCounts(counts);
+        } catch (error) {
+          console.error('Error calculating rarity:', error);
+        }
+      };
+      calculateRarity();
+    }
+  }, [allNFTs]);
+
   // Calculate collection traits with improved handling for the new collection
   const collectionTraits = useMemo(() => {
     const traitsMap: { [trait: string]: { [value: string]: number } } = {};
@@ -818,7 +855,7 @@ export default function ScavenjersCollectionPage() {
   // Reset visible count when filters change
   useEffect(() => {
     setVisibleCount(36);
-  }, [debouncedSearchQuery, selectedTraits]);
+  }, [debouncedSearchQuery, selectedTraits, selectedRarityTiers]);
 
   // Optimized filter function with performance improvements and batching
   const filteredNFTs = useMemo(() => {
@@ -851,6 +888,14 @@ export default function ScavenjersCollectionPage() {
       });
     }
 
+    // Rarity filtering
+    if (selectedRarityTiers.length > 0 && rarityData) {
+      filtered = filtered.filter(item => {
+        const nftRarity = rarityData.nft_rarities[item.nft.id || item.nft.name];
+        return nftRarity && selectedRarityTiers.includes(nftRarity.rarity_tier);
+      });
+    }
+
     const result = filtered.map(item => item.nft);
 
     // Use requestIdleCallback for non-blocking state update
@@ -878,7 +923,7 @@ export default function ScavenjersCollectionPage() {
     }
     
     return result;
-  }, [nftTraitMaps, debouncedSearchQuery, selectedTraits]);
+  }, [nftTraitMaps, debouncedSearchQuery, selectedTraits, selectedRarityTiers, rarityData]);
 
   // Memoize expensive operations for better performance
   const collectionStats = useMemo(() => {
@@ -1081,6 +1126,9 @@ export default function ScavenjersCollectionPage() {
               collectionTraits={collectionTraits}
               selectedTraits={selectedTraits}
               onTraitsChange={debouncedOnTraitsChange}
+              selectedRarityTiers={selectedRarityTiers}
+              onRarityTiersChange={setSelectedRarityTiers}
+              tierCounts={tierCounts}
             />
           </div>
         )}

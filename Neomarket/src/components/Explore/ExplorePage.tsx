@@ -4,6 +4,8 @@ import CollectionSpotlight from './CollectionSpotlight';
 import NFTGrid from './NFTGrid';
 import FeaturedCollections from './FeaturedCollections';
 import VotingHighlight from './VotingHighlight';
+import AxiumCard from './AxiumCard';
+import MusicCard from './MusicCard';
 import { useNeoMarket } from '../../hooks/useNeoMarket';
 import { useCryptoPrice } from '../../hooks/useCryptoPrice';
 
@@ -46,8 +48,21 @@ export default function ExplorePage() {
       {/* Featured Collections */}
       <FeaturedCollections />
 
-      {/* Voting Highlight */}
-      <VotingHighlight />
+      {/* Information Section */}
+      <div className="space-y-6">
+        {/* Category Header */}
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-white mb-2">Information</h2>
+          <p className="text-slate-400 text-sm">Stay updated with the latest from the Scavenjer ecosystem</p>
+        </div>
+
+        {/* Feature Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <VotingHighlight />
+          <AxiumCard />
+          <MusicCard />
+        </div>
+      </div>
 
       {/* NFT Grid */}
       <NFTGrid 

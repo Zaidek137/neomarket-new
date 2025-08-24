@@ -21,6 +21,8 @@ const NexusPage = React.lazy(() => import('./components/NexusPage'));
 const MyEkosPage = React.lazy(() => import('./components/MyEkosPage'));
 const AuctionsPage = React.lazy(() => import('./components/AuctionsPage'));
 const DarkCircuitPage = React.lazy(() => import('./components/DarkCircuit/DarkCircuitPage'));
+
+const AxiumPage = React.lazy(() => import('./components/AxiumPage'));
 const ActivityPage = React.lazy(() => import('./components/ActivityPage'));
 const PrivacyPolicyPage = React.lazy(() => import('./components/PrivacyPolicyPage'));
 const TermsPage = React.lazy(() => import('./components/TermsPage'));
@@ -86,6 +88,8 @@ function App() {
                   <Route path="neomarket" element={<NeoMarketPage />} />
                   <Route path="marketplace" element={<Navigate to="/collections" replace />} />
                   <Route path="dark-circuit" element={<DarkCircuitPage />} />
+
+                  <Route path="axium" element={<AxiumPage />} />
                   <Route path="settings" element={<SettingsPage />} />
                   <Route path="privacy" element={<PrivacyPolicyPage />} />
                   <Route path="terms" element={<TermsPage />} />

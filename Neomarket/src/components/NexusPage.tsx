@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Vote, Users, Clock, CheckCircle, AlertCircle, TrendingUp, Plus, Music, Gamepad2, Building, Palette, Trash2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useActiveAccount } from 'thirdweb/react';
 import { votingService, Proposal, ProposalCategory, VoteType } from '../services/supabase';
 import { useEkoOwnership } from '../hooks/useEkoOwnership';
 import { isAdminWallet } from '../config/admin';
 import CreateProposalModal from './CreateProposalModal';
+import ProposalDetailModal from './ProposalDetailModal';
 
 export default function NexusPage() {
   const account = useActiveAccount();
@@ -18,6 +20,8 @@ export default function NexusPage() {
   const [voting, setVoting] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
   const [userVotes, setUserVotes] = useState<Record<string, VoteType>>({});
 
   // Category configuration
@@ -91,6 +95,20 @@ export default function NexusPage() {
     }
   };
 
+  const handleCardClick = (proposal: Proposal, e: React.MouseEvent) => {
+    // Don't open modal if clicking on buttons or admin controls
+    if ((e.target as HTMLElement).closest('button')) {
+      return;
+    }
+    setSelectedProposal(proposal);
+    setShowDetailModal(true);
+  };
+
+  const handleCloseDetailModal = () => {
+    setShowDetailModal(false);
+    setSelectedProposal(null);
+  };
+
   const handleDeleteProposal = async (proposalId: string) => {
     if (!account?.address || !isAdmin) return;
 
@@ -118,11 +136,11 @@ export default function NexusPage() {
   const getCategoryColor = (category: ProposalCategory) => {
     const cat = categories.find(c => c.value === category);
     switch (cat?.color) {
-      case 'pink': return 'bg-pink-500/20 text-pink-400 border-pink-500/30';
-      case 'green': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'blue': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      case 'orange': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
-      default: return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
+      case 'pink': return 'bg-pink-500/50 text-pink-200 border-pink-400/70 shadow-lg shadow-pink-500/30';
+      case 'green': return 'bg-green-500/50 text-green-200 border-green-400/70 shadow-lg shadow-green-500/30';
+      case 'blue': return 'bg-blue-500/50 text-blue-200 border-blue-400/70 shadow-lg shadow-blue-500/30';
+      case 'orange': return 'bg-orange-500/50 text-orange-200 border-orange-400/70 shadow-lg shadow-orange-500/30';
+      default: return 'bg-purple-500/50 text-purple-200 border-purple-400/70 shadow-lg shadow-purple-500/30';
     }
   };
 
@@ -269,7 +287,7 @@ export default function NexusPage() {
             </button>
           </div>
 
-          {/* Proposals List */}
+          {/* Proposals Grid */}
           {loading ? (
             <div className="text-center py-12">
               <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
@@ -288,99 +306,180 @@ export default function NexusPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-3 sm:space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
               {displayProposals.map((proposal) => (
-                <div key={proposal.id} className="bg-slate-800/50 border border-slate-700 rounded-lg sm:rounded-xl p-4 sm:p-6 hover:bg-slate-800/70 transition-colors">
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
-                    <div className="flex-1">
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
-                        <h3 className="text-base sm:text-lg lg:text-xl font-bold text-white">{proposal.title}</h3>
-                        <span className={`px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium border ${getCategoryColor(proposal.category)}`}>
+                <motion.div 
+                  key={proposal.id} 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: displayProposals.indexOf(proposal) * 0.1 }}
+                  onClick={(e) => handleCardClick(proposal, e)}
+                  className="bg-slate-900/70 border-2 border-yellow-500/30 rounded-xl hover:bg-slate-900/90 hover:border-yellow-400/60 hover:shadow-xl hover:shadow-yellow-500/10 transition-all duration-300 hover:scale-[1.03] overflow-hidden flex flex-col group cursor-pointer"
+                >
+                  {/* Large Image at Top */}
+                  {proposal.image_url && (
+                    <div className="relative h-56 overflow-hidden">
+                      <img 
+                        src={proposal.image_url} 
+                        alt={proposal.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent" />
+                      
+                      {/* Category badge over image */}
+                      <div className="absolute top-3 left-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium border backdrop-blur-sm ${getCategoryColor(proposal.category)}`}>
                           {proposal.category.replace('_', ' ')}
                         </span>
-                        <div className="flex items-center gap-1">
-                          {getStatusIcon(proposal.status)}
-                          <span className="text-xs sm:text-sm text-slate-400 capitalize">{proposal.status}</span>
-                        </div>
                       </div>
-                      <p className="text-xs sm:text-sm lg:text-base text-slate-300 mb-3 sm:mb-4">{proposal.description}</p>
                       
-                      {/* Voting Progress */}
-                      <div className="space-y-2">
-                        <div className="flex flex-col xs:flex-row xs:justify-between text-xs sm:text-sm gap-1">
-                          <span className="text-slate-400">Progress to Pass</span>
-                          <span className="text-white text-xs sm:text-sm">
-                            {proposal.votes_for} / {proposal.votes_required} votes
-                          </span>
-                        </div>
-                        <div className="w-full bg-slate-700 rounded-full h-1.5 sm:h-2">
-                          <div
-                            className="bg-gradient-to-r from-green-500 to-emerald-500 h-full rounded-full transition-all duration-300"
-                            style={{ width: `${calculateProgress(proposal)}%` }}
-                          />
-                        </div>
-                        <div className="flex justify-between text-[10px] sm:text-xs text-slate-400">
-                          <span>For: {proposal.votes_for}</span>
-                          <span>Against: {proposal.votes_against}</span>
-                          <span className="hidden xs:inline">Total: {proposal.votes_for + proposal.votes_against}</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="sm:ml-6 flex flex-col gap-2">
-                      {/* Admin Delete Button */}
+                      {/* Admin delete button over image */}
                       {isAdmin && (
                         <button
                           onClick={() => handleDeleteProposal(proposal.id)}
                           disabled={deleting === proposal.id}
-                          className="self-end bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white p-2 rounded-lg transition-colors"
+                          className="absolute top-3 right-3 bg-red-600/80 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white p-1.5 rounded-lg transition-colors backdrop-blur-sm"
                           title="Delete Proposal"
                         >
                           {deleting === proposal.id ? (
-                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                           ) : (
-                            <Trash2 size={16} />
+                            <Trash2 size={14} />
                           )}
                         </button>
                       )}
-                      
-                      {/* Voting Buttons */}
-                      {proposal.status === 'active' && ownsEko && (
-                        <div className="space-y-1.5 sm:space-y-2 w-full sm:w-auto">
-                        {userVotes[proposal.id] ? (
-                          <div className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-center text-xs sm:text-sm font-medium ${
-                            userVotes[proposal.id] === 'for' 
-                              ? 'bg-green-600/20 text-green-400 border border-green-500/30' 
-                              : 'bg-red-600/20 text-red-400 border border-red-500/30'
-                          }`}>
-                            You voted {userVotes[proposal.id]}
-                          </div>
-                        ) : (
-                          <div className="flex gap-2 sm:flex-col">
-                            <button 
-                              onClick={() => handleVote(proposal.id, 'for')}
-                              disabled={voting === proposal.id}
-                              className="flex-1 sm:w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm"
-                            >
-                              Vote For
-                            </button>
-                            <button 
-                              onClick={() => handleVote(proposal.id, 'against')}
-                              disabled={voting === proposal.id}
-                              className="flex-1 sm:w-full bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm"
-                            >
-                              Vote Against
-                            </button>
+                    </div>
+                  )}
+                  
+                  <div className="p-3 sm:p-4 flex flex-col flex-1">
+                    {/* Header without image (when no image) */}
+                    {!proposal.image_url && (
+                      <div className="flex flex-wrap items-center gap-2 mb-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getCategoryColor(proposal.category)}`}>
+                          {proposal.category.replace('_', ' ')}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {getStatusIcon(proposal.status)}
+                          <span className="text-xs text-slate-400 capitalize">{proposal.status}</span>
+                        </div>
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleDeleteProposal(proposal.id)}
+                            disabled={deleting === proposal.id}
+                            className="ml-auto bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white p-1.5 rounded-lg transition-colors"
+                            title="Delete Proposal"
+                          >
+                            {deleting === proposal.id ? (
+                              <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                              <Trash2 size={14} />
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Title and Status */}
+                    <div className="mb-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        {proposal.image_url && (
+                          <div className="flex items-center gap-1">
+                            {getStatusIcon(proposal.status)}
+                            <span className="text-xs text-slate-400 capitalize">{proposal.status}</span>
                           </div>
                         )}
-                        <div className="text-[10px] sm:text-xs text-slate-400 text-center">
-                          Ends: {new Date(proposal.end_date).toLocaleDateString()}
+                      </div>
+                      <h3 className="text-base font-bold text-white mb-2 line-clamp-2 group-hover:text-yellow-300 transition-colors">
+                        {proposal.title}
+                      </h3>
+                      <p className="text-xs text-slate-300 line-clamp-2">{proposal.description}</p>
+                    </div>
+                    
+                    {/* Voting Progress */}
+                    <div className="space-y-2 mb-3">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-400">Progress</span>
+                        <span className="text-white">
+                          {proposal.votes_for}/{proposal.votes_required}
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-700 rounded-full h-1.5">
+                        <div
+                          className="bg-gradient-to-r from-green-500 to-emerald-500 h-full rounded-full transition-all duration-300"
+                          style={{ width: `${calculateProgress(proposal)}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-xs text-slate-400">
+                        <span>👍 {proposal.votes_for}</span>
+                        <span>👎 {proposal.votes_against}</span>
+                      </div>
+                    </div>
+                    
+                    {/* Voting Actions */}
+                    <div className="mt-auto">
+                      {proposal.status === 'active' && ownsEko && (
+                        <div className="space-y-3">
+                          {userVotes[proposal.id] ? (
+                            <div className={`px-4 py-3 rounded-lg text-center text-sm font-medium border ${
+                              userVotes[proposal.id] === 'for' 
+                                ? 'bg-green-600/20 text-green-400 border-green-500/30' 
+                                : 'bg-red-600/20 text-red-400 border-red-500/30'
+                            }`}>
+                              ✓ You voted {userVotes[proposal.id]}
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-2 gap-2">
+                              <motion.button 
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => handleVote(proposal.id, 'for')}
+                                disabled={voting === proposal.id}
+                                className="bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg font-medium transition-all duration-200 text-xs shadow-lg hover:shadow-green-500/25"
+                              >
+                                {voting === proposal.id ? (
+                                  <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto" />
+                                ) : (
+                                  '👍 For'
+                                )}
+                              </motion.button>
+                              <motion.button 
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => handleVote(proposal.id, 'against')}
+                                disabled={voting === proposal.id}
+                                className="bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg font-medium transition-all duration-200 text-xs shadow-lg hover:shadow-red-500/25"
+                              >
+                                {voting === proposal.id ? (
+                                  <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto" />
+                                ) : (
+                                  '👎 Against'
+                                )}
+                              </motion.button>
+                            </div>
+                          )}
+                          <div className="text-xs text-slate-400 text-center bg-slate-700/30 px-2 py-1 rounded">
+                            <Clock size={10} className="inline mr-1" />
+                            {new Date(proposal.end_date).toLocaleDateString()}
+                          </div>
                         </div>
+                      )}
+                      
+                      {/* Non-Eko holder message */}
+                      {proposal.status === 'active' && !ekoLoading && !ownsEko && (
+                        <div className="bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 px-3 py-2 rounded-lg text-center text-xs">
+                          🔒 Hold Eko to vote
+                        </div>
+                      )}
+                      
+                      {/* Inactive proposal */}
+                      {proposal.status !== 'active' && (
+                        <div className="bg-slate-700/30 text-slate-400 px-3 py-2 rounded-lg text-center text-xs">
+                          {proposal.status === 'passed' ? '✅ Passed' : proposal.status === 'failed' ? '❌ Failed' : 'Closed'}
                         </div>
                       )}
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           )}
@@ -392,6 +491,18 @@ export default function NexusPage() {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onProposalCreated={loadProposals}
+      />
+
+      {/* Proposal Detail Modal */}
+      <ProposalDetailModal
+        proposal={selectedProposal}
+        isOpen={showDetailModal}
+        onClose={handleCloseDetailModal}
+        onVote={handleVote}
+        onDelete={handleDeleteProposal}
+        userVotes={userVotes}
+        voting={voting}
+        deleting={deleting}
       />
     </div>
   );

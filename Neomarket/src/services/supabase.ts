@@ -25,6 +25,7 @@ export interface Proposal {
   end_date: string;
   created_at: string;
   updated_at: string;
+  image_url?: string | null;
 }
 
 export interface Vote {

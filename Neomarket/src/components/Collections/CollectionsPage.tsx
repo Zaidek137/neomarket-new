@@ -28,7 +28,7 @@ const mainCollection: Collection = {
   description: 'An intro collection of unique digital avatars for the Scavenjer ecosystem.',
   image: 'https://zrolrdnymkkdcyksuctq.supabase.co/storage/v1/object/public/Gallery/Main%20Scavenjer.png',
   bannerImage: 'https://zrolrdnymkkdcyksuctq.supabase.co/storage/v1/object/public/Gallery/zaidek._An_anime-style_illustration_of_a_young_male_character_9b6aef66-a91e-4249-b125-692f0859d6ea_2.png',
-  floorPrice: 29.99,
+  floorPrice: 19.15,
   items: 9000,
   owners: 10,
   listed: 0,

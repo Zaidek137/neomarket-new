@@ -24,6 +24,7 @@ const navigationItems = [
   { icon: Gavel, label: 'Auctions', path: '/auctions' },
   { icon: Vote, label: 'The Nexus', path: '/nexus' },
   { icon: Zap, label: 'The Dark Circuit', path: '/dark-circuit' },
+
   { icon: User, label: 'My Ekos', path: '/my-ekos' },
   { icon: Activity, label: 'Activity', path: '/activity' },
   { icon: Settings, label: 'Settings', path: '/settings' },

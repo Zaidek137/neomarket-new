@@ -89,7 +89,7 @@ export default function CollectionSpotlight() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 lg:gap-4 w-full min-w-0">
           
           {/* Left: Title and Description Box */}
-          <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg p-2.5 sm:p-3 lg:p-4 border border-slate-700/50 w-full sm:w-auto sm:flex-shrink-0 sm:max-w-xs lg:max-w-md">
+          <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg p-2.5 sm:p-3 lg:p-4 border border-slate-50/50 w-full sm:w-auto sm:flex-shrink-0 sm:max-w-xs lg:max-w-md">
             <h2 className="text-sm sm:text-base lg:text-xl font-bold text-white mb-0.5 sm:mb-1">{slide.title}</h2>
             <p className="text-cyan-400 font-medium text-[10px] sm:text-xs lg:text-sm mb-0.5 sm:mb-1 lg:mb-2">{slide.subtitle}</p>
             <p className="text-slate-300 text-[10px] sm:text-xs lg:text-sm leading-relaxed line-clamp-2 hidden sm:block">{slide.description}</p>
@@ -97,56 +97,83 @@ export default function CollectionSpotlight() {
 
           {/* Center: Stats */}
           <div className="flex gap-1.5 sm:gap-2 flex-shrink-0">
-            <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg p-1.5 sm:p-2 lg:p-3 border border-slate-700/50 text-center min-w-[50px] sm:min-w-[70px] lg:min-w-[80px]">
+            <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg p-1.5 sm:p-2 lg:p-3 border border-slate-400/50 text-center min-w-[50px] sm:min-w-[70px] lg:min-w-[80px]">
               <div className="text-[9px] sm:text-[10px] lg:text-xs text-slate-400">Est. Price</div>
               <div className="text-xs sm:text-sm lg:text-base font-bold text-white">${slide.price}</div>
               <div className="text-[8px] sm:text-[9px] text-slate-500">~Polygon</div>
             </div>
-            <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg p-1.5 sm:p-2 lg:p-3 border border-slate-700/50 text-center min-w-[50px] sm:min-w-[70px] lg:min-w-[80px]">
+            <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg p-1.5 sm:p-2 lg:p-3 border border-slate-400/50 text-center min-w-[50px] sm:min-w-[70px] lg:min-w-[80px]">
               <div className="text-[9px] sm:text-[10px] lg:text-xs text-slate-400">Supply</div>
               <div className="text-xs sm:text-sm lg:text-base font-bold text-white">{slide.totalSupply.toLocaleString()}</div>
             </div>
           </div>
 
-          {/* Center-Right: Quantity Selector - Desktop Only */}
-          <div className="hidden sm:block flex-shrink-0">
-            <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg p-2 lg:p-3 border border-slate-700/50 min-w-[100px] lg:min-w-[120px]">
-              <div className="text-[9px] lg:text-xs text-slate-400 text-center mb-1">Select Qty</div>
-              <div className="flex items-center justify-center gap-1">
-                <button
-                  onClick={decrementQuantity}
-                  disabled={purchaseQuantity <= 1}
-                  className="w-6 h-6 lg:w-7 lg:h-7 rounded bg-slate-700/50 hover:bg-slate-600/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
-                >
-                  <Minus size={10} className="text-white" />
-                </button>
-                <div className="w-6 lg:w-8 text-center">
-                  <span className="text-sm lg:text-base font-bold text-white">{purchaseQuantity}</span>
-                </div>
-                <button
-                  onClick={incrementQuantity}
-                  disabled={purchaseQuantity >= 10}
-                  className="w-6 h-6 lg:w-7 lg:h-7 rounded bg-slate-700/50 hover:bg-slate-600/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
-                >
-                  <Plus size={10} className="text-white" />
-                </button>
-              </div>
-              <div className="text-center mt-1">
-                <div className="text-[8px] lg:text-[9px] text-slate-500">Max 10</div>
-              </div>
-            </div>
-          </div>
+          {/* Spacer to push buy component right */}
+          <div className="hidden sm:block flex-grow min-w-[20px]"></div>
 
-          {/* Right: Action Button - Hidden on mobile, shown on larger screens */}
-          <div className="hidden sm:block w-full sm:w-auto sm:ml-auto flex-shrink-0">
-            <button 
-              onClick={handlePurchase}
-              className="w-full sm:w-auto bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-black px-3 sm:px-4 lg:px-6 py-1.5 sm:py-2 lg:py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-1.5 sm:gap-2 shadow-lg text-xs sm:text-sm lg:text-base whitespace-nowrap"
-            >
-              <ShoppingCart size={14} className="sm:w-[16px] sm:h-[16px] lg:w-[18px] lg:h-[18px]" />
-              <span className="hidden lg:inline">Buy {purchaseQuantity} Eko{purchaseQuantity > 1 ? 's' : ''}</span>
-              <span className="lg:hidden">Buy {purchaseQuantity}</span>
-            </button>
+          {/* Comprehensive Buy Component - Desktop Only */}
+          <div className="hidden sm:block flex-shrink-0">
+            <div className="bg-slate-900/80 backdrop-blur-sm rounded-xl p-4 border border-slate-400/50 min-w-[360px] lg:min-w-[400px]">
+              
+              {/* Header */}
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <div className="text-sm lg:text-base font-bold text-white">Get Your Eko{purchaseQuantity > 1 ? 's' : ''}</div>
+                  <div className="text-xs text-slate-400">Randomized from 9,000 unique collectibles</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm lg:text-base font-bold text-cyan-400">${(19 * purchaseQuantity).toFixed(0)} USD</div>
+                  <div className="text-xs text-slate-500">Est. Total</div>
+                </div>
+              </div>
+
+              {/* Quantity & Buy Row */}
+              <div className="flex items-center gap-4">
+                
+                {/* Quantity Selector */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-300">Quantity:</span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={decrementQuantity}
+                      disabled={purchaseQuantity <= 1}
+                      className="w-8 h-8 rounded-lg bg-slate-700/50 hover:bg-slate-600/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors border border-slate-600/50"
+                    >
+                      <Minus size={12} className="text-white" />
+                    </button>
+                    <div className="w-8 text-center">
+                      <span className="text-lg font-bold text-white">{purchaseQuantity}</span>
+                    </div>
+                    <button
+                      onClick={incrementQuantity}
+                      disabled={purchaseQuantity >= 10}
+                      className="w-8 h-8 rounded-lg bg-slate-700/50 hover:bg-slate-600/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors border border-slate-600/50"
+                    >
+                      <Plus size={12} className="text-white" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Buy Button */}
+                <div className="flex-1">
+                  <button 
+                    onClick={handlePurchase}
+                    className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-black px-4 py-2.5 rounded-lg font-bold transition-all duration-200 flex items-center justify-center gap-2 shadow-lg text-sm"
+                  >
+                    <ShoppingCart size={14} />
+                    Buy with Crossmint
+                  </button>
+                </div>
+
+              </div>
+
+              {/* Footer Info */}
+              <div className="mt-3 pt-2 border-t border-slate-600/30 flex justify-between text-xs text-slate-500">
+                <span>Max 10 Ekos</span>
+                <span>Pricing fluctuates with Polygon</span>
+              </div>
+              
+            </div>
           </div>
         </div>
       </div>

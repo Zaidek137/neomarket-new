@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { ChevronDown, X, Check } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import type { Collection } from './CollectionsPage';
+import type { NFTRarity } from '../../types/marketplace';
+import RarityFilter from './RarityFilter';
 
 interface FilterSidebarProps {
   filters: {
@@ -9,9 +11,11 @@ interface FilterSidebarProps {
     categories: string[];
     priceRange: { min: string; max: string };
     itemRange: { min: string; max: string };
+    rarityTiers?: NFTRarity['rarity_tier'][];
   };
   onFiltersChange: (filters: any) => void;
   collections: Collection[];
+  tierCounts?: { [tier: string]: number };
 }
 
 const categories = [
@@ -47,7 +51,7 @@ function FilterSection({ title, children, defaultOpen = true }: FilterSectionPro
   );
 }
 
-export default function FilterSidebar({ filters, onFiltersChange, collections }: FilterSidebarProps) {
+export default function FilterSidebar({ filters, onFiltersChange, collections, tierCounts }: FilterSidebarProps) {
   const updateFilter = (key: string, value: any) => {
     onFiltersChange({ ...filters, [key]: value });
   };
@@ -64,7 +68,8 @@ export default function FilterSidebar({ filters, onFiltersChange, collections }:
       verified: 'all',
       categories: [],
       priceRange: { min: '', max: '' },
-      itemRange: { min: '', max: '' }
+      itemRange: { min: '', max: '' },
+      rarityTiers: []
     });
   };
 
@@ -72,7 +77,8 @@ export default function FilterSidebar({ filters, onFiltersChange, collections }:
     (filters.verified !== 'all' ? 1 : 0) +
     (filters.categories.length > 0 ? 1 : 0) +
     (filters.priceRange.min || filters.priceRange.max ? 1 : 0) +
-    (filters.itemRange.min || filters.itemRange.max ? 1 : 0)
+    (filters.itemRange.min || filters.itemRange.max ? 1 : 0) +
+    ((filters.rarityTiers && filters.rarityTiers.length > 0) ? 1 : 0)
   );
 
   return (
@@ -90,6 +96,13 @@ export default function FilterSidebar({ filters, onFiltersChange, collections }:
           </button>
         )}
       </div>
+
+      {/* Rarity Filter */}
+      <RarityFilter
+        selectedTiers={filters.rarityTiers || []}
+        onTiersChange={(tiers) => updateFilter('rarityTiers', tiers)}
+        tierCounts={tierCounts}
+      />
 
       {/* Status */}
       <FilterSection title="Status">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Plus, ShoppingCart, Eye, ExternalLink, Wallet } from 'lucide-react';
+import { User, Plus, ShoppingCart, Eye, ExternalLink, Wallet, Sparkles } from 'lucide-react';
 import { useActiveAccount, useSendTransaction } from 'thirdweb/react';
 import { getContract, prepareContractCall, toWei } from 'thirdweb';
 import { getOwnedNFTs } from 'thirdweb/extensions/erc721';
@@ -9,6 +9,7 @@ import { client } from '../client';
 import { NFT_COLLECTION_ADDRESS, CONTRACT_ADDRESS, NATIVE_TOKEN_ADDRESS } from '../config/constants';
 import { useCryptoPrice } from '../hooks/useCryptoPrice';
 import { ipfsToHttp } from '../lib/ipfs';
+import RarityCheckerModal from './RarityCheckerModal';
 
 interface OwnedEko {
   tokenId: string;
@@ -32,6 +33,9 @@ export default function MyEkosPage() {
   const [selectedEko, setSelectedEko] = useState<OwnedEko | null>(null);
   const [listingPrice, setListingPrice] = useState('');
   const [isListing, setIsListing] = useState(false);
+  const [showRarityModal, setShowRarityModal] = useState(false);
+  const [raritySelectedEko, setRaritySelectedEko] = useState<OwnedEko | null>(null);
+  const [collectionNFTs, setCollectionNFTs] = useState<any[]>([]);
 
   // Fetch user's owned Ekos
   useEffect(() => {
@@ -41,6 +45,24 @@ export default function MyEkosPage() {
       setOwnedEkos([]);
     }
   }, [account?.address]);
+
+  // Load collection metadata for rarity calculation
+  useEffect(() => {
+    const loadCollectionMetadata = async () => {
+      try {
+        const response = await fetch('/metadata-fixed.json');
+        if (response.ok) {
+          const nfts = await response.json();
+          if (Array.isArray(nfts)) {
+            setCollectionNFTs(nfts);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading collection metadata:', error);
+      }
+    };
+    loadCollectionMetadata();
+  }, []);
 
   const fetchOwnedEkos = async () => {
     if (!account?.address) return;
@@ -91,6 +113,11 @@ export default function MyEkosPage() {
   const handleListEko = (eko: OwnedEko) => {
     setSelectedEko(eko);
     setShowListModal(true);
+  };
+
+  const handleCheckRarity = (eko: OwnedEko) => {
+    setRaritySelectedEko(eko);
+    setShowRarityModal(true);
   };
 
   const handleSubmitListing = async () => {
@@ -292,6 +319,13 @@ export default function MyEkosPage() {
             <ShoppingCart size={16} className="text-white" />
           </button>
           <button
+            onClick={() => handleCheckRarity(eko)}
+            className="p-2 bg-purple-500/80 backdrop-blur-sm rounded-lg hover:bg-purple-600/80 transition-colors"
+            title="Check Rarity"
+          >
+            <Sparkles size={16} className="text-white" />
+          </button>
+          <button
             className="p-2 bg-slate-600/80 backdrop-blur-sm rounded-lg hover:bg-slate-700/80 transition-colors"
             title="View Details"
           >
@@ -445,6 +479,19 @@ export default function MyEkosPage() {
 
       {/* List Eko Modal */}
       {showListModal && <ListEkoModal />}
+
+      {/* Rarity Checker Modal */}
+      {showRarityModal && raritySelectedEko && (
+        <RarityCheckerModal
+          isOpen={showRarityModal}
+          onClose={() => {
+            setShowRarityModal(false);
+            setRaritySelectedEko(null);
+          }}
+          nft={raritySelectedEko}
+          collectionNFTs={collectionNFTs}
+        />
+      )}
     </div>
   );
 }

@@ -22,8 +22,11 @@ export default function CreateProposalModal({ isOpen, onClose, onProposalCreated
     category: 'music' as ProposalCategory,
     votes_required: 100,
     end_date: '',
-    end_time: '23:59'
+    end_time: '23:59',
+    image_url: ''
   });
+
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const categories: { value: ProposalCategory; label: string }[] = [
     { value: 'music', label: 'Music & Music Videos' },
@@ -31,6 +34,15 @@ export default function CreateProposalModal({ isOpen, onClose, onProposalCreated
     { value: 'city_voting', label: 'City Voting' },
     { value: 'creative_content', label: 'Creative Content' }
   ];
+
+  const handleImageUrlChange = (url: string) => {
+    setFormData({ ...formData, image_url: url });
+    if (url) {
+      setImagePreview(url);
+    } else {
+      setImagePreview(null);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,7 +71,8 @@ export default function CreateProposalModal({ isOpen, onClose, onProposalCreated
         votes_required: formData.votes_required,
         created_by: account.address,
         start_date: new Date().toISOString(),
-        end_date: endDateTime.toISOString()
+        end_date: endDateTime.toISOString(),
+        image_url: formData.image_url || null
       });
 
       onProposalCreated();
@@ -72,8 +85,10 @@ export default function CreateProposalModal({ isOpen, onClose, onProposalCreated
         category: 'music',
         votes_required: 100,
         end_date: '',
-        end_time: '23:59'
+        end_time: '23:59',
+        image_url: ''
       });
+      setImagePreview(null);
     } catch (err) {
       console.error('Error creating proposal:', err);
       setError(err instanceof Error ? err.message : 'Failed to create proposal');
@@ -141,6 +156,49 @@ export default function CreateProposalModal({ isOpen, onClose, onProposalCreated
                 className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 transition-colors resize-none text-sm sm:text-base"
                 placeholder="Provide detailed information about this proposal"
               />
+            </div>
+
+            {/* Image Upload */}
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-slate-300 mb-1.5 sm:mb-2">
+                Proposal Image (Optional)
+              </label>
+              
+              {/* Image Preview */}
+              {imagePreview && (
+                <div className="mb-4 relative">
+                  <img 
+                    src={imagePreview} 
+                    alt="Proposal preview" 
+                    className="w-full h-48 object-cover rounded-lg border border-slate-600"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImagePreview(null);
+                      setFormData({ ...formData, image_url: '' });
+                    }}
+                    className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white p-1.5 rounded-full transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+
+              {/* Image URL Input */}
+              <div>
+                <input
+                  type="url"
+                  value={formData.image_url}
+                  onChange={(e) => handleImageUrlChange(e.target.value)}
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 transition-colors text-sm sm:text-base"
+                  placeholder="Enter image URL (https://...)"
+                />
+              </div>
+              
+              <p className="text-[10px] sm:text-xs text-slate-400 mt-1">
+                Add an image URL to make your proposal more engaging. Supports JPG, PNG, GIF formats.
+              </p>
             </div>
 
             {/* Category */}

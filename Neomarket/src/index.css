@@ -261,3 +261,30 @@ body.mobile-menu-open {
 .animation-delay-4000 {
   animation-delay: 4s;
 }
+
+/* Enhanced skeleton animations for rarity filtering */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite linear;
+}
+
+.animate-slide {
+  animation: slide 2s infinite linear;
+}

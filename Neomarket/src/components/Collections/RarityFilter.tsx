@@ -7,13 +7,14 @@ interface RarityFilterProps {
   selectedTiers: NFTRarity['rarity_tier'][];
   onTiersChange: (tiers: NFTRarity['rarity_tier'][]) => void;
   tierCounts?: { [tier: string]: number };
+  isFiltering?: boolean;
 }
 
 const rarityTiers: NFTRarity['rarity_tier'][] = [
   'Mythic', 'Legendary', 'Epic', 'Rare', 'Uncommon', 'Common'
 ];
 
-export default function RarityFilter({ selectedTiers, onTiersChange, tierCounts }: RarityFilterProps) {
+export default function RarityFilter({ selectedTiers, onTiersChange, tierCounts, isFiltering }: RarityFilterProps) {
   const [isOpen, setIsOpen] = useState(true);
 
   const toggleTier = (tier: NFTRarity['rarity_tier']) => {
@@ -38,8 +39,14 @@ export default function RarityFilter({ selectedTiers, onTiersChange, tierCounts 
         className="flex items-center justify-between w-full text-left mb-3 hover:text-cyan-300 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <Sparkles size={16} className="text-purple-400" />
+          <Sparkles size={16} className={cn(
+            "text-purple-400 transition-all duration-300",
+            isFiltering && "animate-pulse text-cyan-400"
+          )} />
           <span className="text-sm font-semibold text-white">Rarity</span>
+          {isFiltering && (
+            <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
+          )}
         </div>
         <ChevronDown 
           size={16} 

@@ -212,7 +212,8 @@ const TraitsFilter = React.memo(({
   onTraitsChange,
   selectedRarityTiers,
   onRarityTiersChange,
-  tierCounts
+  tierCounts,
+  isFiltering
 }: {
   collectionTraits: { [trait: string]: { [value: string]: number } };
   selectedTraits: { [trait: string]: Set<string> };
@@ -220,6 +221,7 @@ const TraitsFilter = React.memo(({
   selectedRarityTiers: NFTRarity['rarity_tier'][];
   onRarityTiersChange: (tiers: NFTRarity['rarity_tier'][]) => void;
   tierCounts: { [tier: string]: number };
+  isFiltering: boolean;
 }) => {
   const [openCategories, setOpenCategories] = useState<{ [trait: string]: boolean }>({});
 
@@ -300,6 +302,7 @@ const TraitsFilter = React.memo(({
           selectedTiers={selectedRarityTiers}
           onTiersChange={onRarityTiersChange}
           tierCounts={tierCounts}
+          isFiltering={isFiltering}
         />
         
         {traitsEntries.map(([trait, values]) => (
@@ -337,24 +340,24 @@ const LoadingSpinner = ({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) => {
 };
 
 // Skeleton card component for smooth loading transitions
-const SkeletonCard = React.memo(({ viewMode }: { viewMode: 'grid' | 'list' }) => {
+const SkeletonCard = React.memo(({ viewMode, isMobile }: { viewMode: 'grid' | 'list'; isMobile?: boolean }) => {
   if (viewMode === 'list') {
     return (
       <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4 animate-pulse">
         <div className="flex items-center gap-4">
           {/* Skeleton Image */}
-          <div className="w-16 h-16 bg-slate-700/50 rounded-lg flex-shrink-0" />
+          <div className="w-16 h-16 bg-gradient-to-r from-slate-700/50 via-slate-600/60 to-slate-700/50 bg-[length:200%_100%] animate-[shimmer_2s_infinite] rounded-lg flex-shrink-0" />
           
           {/* Skeleton Info */}
           <div className="flex-1 min-w-0">
-            <div className="h-4 bg-slate-700/50 rounded mb-2 w-3/4" />
-            <div className="h-3 bg-slate-700/30 rounded w-1/2" />
+            <div className="h-4 bg-gradient-to-r from-slate-700/50 via-slate-600/60 to-slate-700/50 bg-[length:200%_100%] animate-[shimmer_2s_infinite] rounded mb-2 w-3/4" />
+            <div className="h-3 bg-gradient-to-r from-slate-700/30 via-slate-600/40 to-slate-700/30 bg-[length:200%_100%] animate-[shimmer_2s_infinite] rounded w-1/2" />
           </div>
           
           {/* Skeleton Actions */}
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-slate-700/30 rounded-lg" />
-            <div className="w-8 h-8 bg-slate-700/30 rounded-lg" />
+            <div className="w-8 h-8 bg-gradient-to-r from-slate-700/30 via-slate-600/40 to-slate-700/30 bg-[length:200%_100%] animate-[shimmer_2s_infinite] rounded-lg" />
+            <div className="w-8 h-8 bg-gradient-to-r from-slate-700/30 via-slate-600/40 to-slate-700/30 bg-[length:200%_100%] animate-[shimmer_2s_infinite] rounded-lg" />
           </div>
       </div>
     </div>
@@ -362,16 +365,27 @@ const SkeletonCard = React.memo(({ viewMode }: { viewMode: 'grid' | 'list' }) =>
 }
 
   return (
-    <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl overflow-hidden animate-pulse">
-      {/* Skeleton Image */}
-      <div className="aspect-square bg-slate-700/50" />
+    <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl overflow-hidden group">
+      {/* Skeleton Image with shimmer effect */}
+      <div className="aspect-square bg-gradient-to-br from-slate-700/40 via-slate-600/50 to-slate-700/40 bg-[length:200%_200%] animate-[shimmer_2.5s_infinite] relative">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-[slide_2s_infinite]" />
+      </div>
       
       {/* Skeleton Info */}
-      <div className="p-4">
-        <div className="h-4 bg-slate-700/50 rounded mb-2" />
+      <div className={cn("p-4", isMobile && "p-2")}>
+        <div className={cn(
+          "h-4 bg-gradient-to-r from-slate-700/50 via-slate-600/60 to-slate-700/50 bg-[length:200%_100%] animate-[shimmer_2s_infinite] rounded mb-2",
+          isMobile && "h-3"
+        )} />
         <div className="flex items-center justify-between">
-          <div className="h-3 bg-slate-700/30 rounded w-1/2" />
-          <div className="h-3 bg-slate-700/30 rounded w-1/4" />
+          <div className={cn(
+            "h-3 bg-gradient-to-r from-slate-700/30 via-slate-600/40 to-slate-700/30 bg-[length:200%_100%] animate-[shimmer_2s_infinite] rounded w-1/2",
+            isMobile && "h-2"
+          )} />
+          <div className={cn(
+            "h-3 bg-gradient-to-r from-slate-700/30 via-slate-600/40 to-slate-700/30 bg-[length:200%_100%] animate-[shimmer_2s_infinite] rounded w-1/4",
+            isMobile && "h-2"
+          )} />
         </div>
       </div>
     </div>
@@ -379,9 +393,9 @@ const SkeletonCard = React.memo(({ viewMode }: { viewMode: 'grid' | 'list' }) =>
 });
 
 // Grid of skeleton cards
-const SkeletonGrid = React.memo(({ count = 36, viewMode }: { count?: number; viewMode: 'grid' | 'list' }) => {
+const SkeletonGrid = React.memo(({ count = 36, viewMode, isMobile }: { count?: number; viewMode: 'grid' | 'list'; isMobile?: boolean }) => {
   const skeletons = Array.from({ length: count }, (_, i) => (
-    <SkeletonCard key={`skeleton-${i}`} viewMode={viewMode} />
+    <SkeletonCard key={`skeleton-${i}`} viewMode={viewMode} isMobile={isMobile} />
   ));
 
   if (viewMode === 'list') {
@@ -389,7 +403,12 @@ const SkeletonGrid = React.memo(({ count = 36, viewMode }: { count?: number; vie
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+    <div className={cn(
+      "grid gap-3",
+      isMobile 
+        ? "grid-cols-3 gap-2" // Mobile: 3 columns, smaller gaps
+        : "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4" // Desktop: original layout
+    )}>
       {skeletons}
     </div>
   );
@@ -820,8 +839,9 @@ export default function ScavenjersCollectionPage() {
       .map(([key, values]) => `${key}:${Array.from(values).sort().join(',')}`)
       .sort()
       .join('|');
-    return `${searchQuery}::${traitsKey}`;
-  }, [searchQuery, selectedTraits]);
+    const rarityKey = selectedRarityTiers.sort().join(',');
+    return `${searchQuery}::${traitsKey}::${rarityKey}`;
+  }, [searchQuery, selectedTraits, selectedRarityTiers]);
 
   // Immediately show skeletons when filter state changes
   useEffect(() => {
@@ -872,6 +892,23 @@ export default function ScavenjersCollectionPage() {
     filterUpdateTimeoutRef.current = setTimeout(() => {
       setSelectedTraits(newTraits);
     }, 100); // Quick response for better UX
+  }, []);
+
+  // Debounced rarity filter handler with immediate visual feedback
+  const handleRarityTiersChange = useCallback((newTiers: NFTRarity['rarity_tier'][]) => {
+    // Show immediate filtering state
+    setFiltering(true);
+    setShowSkeletons(true);
+    
+    // Clear any existing timeout
+    if (filterUpdateTimeoutRef.current) {
+      clearTimeout(filterUpdateTimeoutRef.current);
+    }
+    
+    // Apply rarity filter with slight delay for smooth animation
+    filterUpdateTimeoutRef.current = setTimeout(() => {
+      setSelectedRarityTiers(newTiers);
+    }, 150); // Slight delay for visual feedback
   }, []);
 
   // Reset visible count when filters change
@@ -1149,8 +1186,9 @@ export default function ScavenjersCollectionPage() {
               selectedTraits={selectedTraits}
               onTraitsChange={debouncedOnTraitsChange}
               selectedRarityTiers={selectedRarityTiers}
-              onRarityTiersChange={setSelectedRarityTiers}
+              onRarityTiersChange={handleRarityTiersChange}
               tierCounts={tierCounts}
+              isFiltering={filtering}
             />
           </div>
         )}
@@ -1249,12 +1287,19 @@ export default function ScavenjersCollectionPage() {
               {/* Show skeletons immediately when filtering starts */}
               {showSkeletons ? (
                 <div className="relative">
-                  <SkeletonGrid count={visibleCount} viewMode={viewMode} />
+                  <SkeletonGrid count={visibleCount} viewMode={viewMode} isMobile={isMobile} />
                   {/* Filtering status overlay */}
                   <div className="absolute top-4 right-4 bg-slate-800/90 backdrop-blur-sm rounded-lg px-3 py-2 border border-slate-600/50">
                     <div className="flex items-center gap-2">
                       <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
-                      <span className="text-sm text-slate-300">Filtering Ekos...</span>
+                      <span className="text-sm text-slate-300">
+                        {selectedRarityTiers.length > 0 && Object.keys(selectedTraits).length === 0 
+                          ? `Filtering by ${selectedRarityTiers.length} rarity tier${selectedRarityTiers.length > 1 ? 's' : ''}...`
+                          : selectedRarityTiers.length > 0 
+                            ? 'Filtering by rarity & traits...'
+                            : 'Filtering Ekos...'
+                        }
+                      </span>
                     </div>
                   </div>
                 </div>

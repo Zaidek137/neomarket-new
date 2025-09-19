@@ -1,6 +1,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { ThirdwebProvider } from "thirdweb/react";
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from "react-router-dom";
+import { polygon } from 'thirdweb/chains';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 

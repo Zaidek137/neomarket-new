@@ -1,0 +1,32 @@
+{
+  "name": "neomarket-server",
+  "version": "1.0.0",
+  "description": "Backend server for NFT exchange functionality using Thirdweb Vault",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.4",
+    "@thirdweb-dev/vault-sdk": "latest",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "thirdweb": "^5.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "nft",
+    "blockchain",
+    "thirdweb",
+    "vault",
+    "exchange"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

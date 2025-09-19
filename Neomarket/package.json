@@ -17,6 +17,7 @@
     "@crossmint/client-sdk-react-ui": "^2.0.0",
     "@heroicons/react": "^2.2.0",
     "@supabase/supabase-js": "^2.55.0",
+    "@thirdweb-dev/vault-sdk": "^0.0.3",
     "@vercel/analytics": "^1.5.0",
     "@vercel/speed-insights": "^1.2.0",
     "@wagmi/core": "^2.17.2",

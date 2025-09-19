@@ -4,6 +4,7 @@ import { X, Users, Trophy, Vote, Zap, Eye, Plus, Minus } from 'lucide-react';
 import { useActiveAccount, ConnectButton } from 'thirdweb/react';
 import { CrossmintProvider, CrossmintHostedCheckout } from "@crossmint/client-sdk-react-ui";
 import { createThirdwebClient } from 'thirdweb';
+import { polygon } from 'thirdweb/chains';
 import { useNavigate } from 'react-router-dom';
 
 const client = createThirdwebClient({
@@ -237,6 +238,7 @@ export default function IntroEkoModal({ isOpen, onClose }: IntroEkoModalProps) {
                         </div>
                         <ConnectButton
                           client={client}
+                          chain={polygon}
                           appMetadata={{
                             name: "NeoMarket",
                             url: "https://neomarket.scavenjer.com"

@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Filter, Grid3X3, List, SlidersHorizontal, ChevronDown, ShoppingCart, Eye, Heart, DollarSign, Plus, Tag, X } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Search, Grid3X3, List, SlidersHorizontal, ChevronDown, ShoppingCart, Eye, Heart, Plus, Tag, X, Flame } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useActiveAccount, useSendTransaction, MediaRenderer } from 'thirdweb/react';
 import { getContract, readContract, prepareContractCall, toWei } from 'thirdweb';
@@ -9,6 +9,7 @@ import { client } from '../../client';
 import { CONTRACT_ADDRESS, NFT_COLLECTION_ADDRESS, WMATIC_ADDRESS } from '../../config/constants';
 import BuyModal from '../BuyModal';
 import { useCryptoPrice } from '../../hooks/useCryptoPrice';
+import { BurnExchangeModal, UserInfoModal, AdminPanelModal, BurnReward, UserInfo } from './BurnExchangeComponents';
 
 interface ListedEko {
   listingId: bigint;
@@ -32,10 +33,11 @@ interface ListedEko {
 
 
 
+
 export default function ExchangePage() {
   const account = useActiveAccount();
   const { mutate: sendTransaction, isPending } = useSendTransaction();
-  const { price: polPrice } = useCryptoPrice('matic-network');
+  const { polPrice } = useCryptoPrice();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -53,6 +55,56 @@ export default function ExchangePage() {
     collection: 'all',
     traits: {} as { [trait: string]: string[] }
   });
+
+  // New state for burn and exchange functionality
+  const [showBurnModal, setShowBurnModal] = useState(false);
+  const [burnRewards, setBurnRewards] = useState<BurnReward[]>([]);
+  const [selectedBurnReward, setSelectedBurnReward] = useState<BurnReward | null>(null);
+  const [userInfo, setUserInfo] = useState<UserInfo>({ name: '', email: '', phone: '', address: '' });
+  const [showUserInfoModal, setShowUserInfoModal] = useState(false);
+  const [selectedNftForBurn, setSelectedNftForBurn] = useState<any | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false); // This should be set based on wallet address
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [, setLoadingRewards] = useState(false);
+
+  // Check if user is admin (replace with your actual admin addresses)
+  useEffect(() => {
+    if (account?.address) {
+      const adminAddresses = [
+        // Add your admin wallet addresses here
+        '0xf8Ca9dA64Bb500C4C4395f7Bb987De3e77883130'.toLowerCase(), // 
+      ];
+      const isUserAdmin = adminAddresses.includes(account.address.toLowerCase());
+      setIsAdmin(isUserAdmin);
+    } else {
+      setIsAdmin(false);
+    }
+  }, [account?.address]);
+
+  // Fetch burn rewards from server
+  useEffect(() => {
+    const fetchBurnRewards = async () => {
+      if (!isAdmin) return;
+      
+      setLoadingRewards(true);
+      try {
+        const response = await fetch('/api/admin/rewards');
+        const data = await response.json();
+        
+        if (data.success) {
+          setBurnRewards(data.rewards);
+        } else {
+          console.error('Failed to fetch burn rewards:', data.error);
+        }
+      } catch (error) {
+        console.error('Error fetching burn rewards:', error);
+      } finally {
+        setLoadingRewards(false);
+      }
+    };
+
+    fetchBurnRewards();
+  }, [isAdmin]);
 
   // Fetch marketplace listings
   useEffect(() => {
@@ -269,8 +321,50 @@ export default function ExchangePage() {
         </div>
       </div>
 
-      {/* Main Content Container */}
+      {/* New Burn and Exchange Section */}
+      <div className="px-3 py-6 space-y-6">
+        <div className="bg-gradient-to-br from-orange-500/10 via-red-500/10 to-pink-500/10 backdrop-blur-sm border border-orange-500/20 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg">
+              <Flame size={24} className="text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-white">Coming in from an Eko hunt?</h2>
+              <p className="text-orange-200">Let's see what your Eko is worth.</p>
+            </div>
+          </div>
+          
+          <p className="text-white/80 mb-6">
+            Exchange your eligible Ekos for USDT or other exclusive rewards. Transfer your NFT to our secure server wallet, and receive your reward instantly.
+          </p>
+
+                  <div className="flex flex-wrap gap-4">
+                    <button
+                      onClick={() => setShowBurnModal(true)}
+                      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:from-orange-600 hover:to-red-600 transition-all duration-300 font-medium shadow-lg"
+                    >
+                      <Flame size={18} />
+                      Exchange Eko
+                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => setShowAdminPanel(true)}
+                        className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-lg hover:from-purple-600 hover:to-indigo-600 transition-all duration-300 font-medium shadow-lg"
+                      >
+                        <Tag size={18} />
+                        Admin Panel
+                      </button>
+                    )}
+                  </div>
+        </div>
+      </div>
+
+      {/* Ekos Listed by Scavenjers Section */}
       <div className="px-3 py-4 space-y-4">
+        <div className="flex items-center gap-3 mb-6">
+          <h2 className="text-2xl font-bold text-white">Ekos Listed by Scavenjers</h2>
+          <div className="h-px bg-gradient-to-r from-cyan-500/50 to-transparent flex-1"></div>
+        </div>
 
       {/* Controls Bar */}
       <div className="flex items-center justify-between gap-4">
@@ -398,6 +492,62 @@ export default function ExchangePage() {
           }}
           client={client}
           polPrice={polPrice || null}
+        />
+      )}
+
+      {/* Burn and Exchange Modal */}
+      {showBurnModal && (
+        <BurnExchangeModal
+          isOpen={showBurnModal}
+          onClose={() => setShowBurnModal(false)}
+          burnRewards={burnRewards}
+          onRewardSelect={(reward, nft) => {
+            setSelectedBurnReward(reward);
+            setSelectedNftForBurn(nft);
+            if (reward.type === 'custom' && reward.customReward?.requiresInfo) {
+              setShowUserInfoModal(true);
+            }
+          }}
+          account={account}
+          client={client}
+          sendTransaction={sendTransaction}
+          isPending={isPending}
+        />
+      )}
+
+      {/* User Info Modal */}
+      {showUserInfoModal && selectedBurnReward && (
+        <UserInfoModal
+          isOpen={showUserInfoModal}
+          onClose={() => {
+            setShowUserInfoModal(false);
+            setSelectedBurnReward(null);
+            setSelectedNftForBurn(null);
+          }}
+          userInfo={userInfo}
+          onUserInfoChange={setUserInfo}
+          reward={selectedBurnReward}
+          selectedNft={selectedNftForBurn}
+          client={client}
+          sendTransaction={sendTransaction}
+          isPending={isPending}
+          onSubmit={() => {
+            // Handle burn with user info
+            setShowUserInfoModal(false);
+            setSelectedBurnReward(null);
+            setSelectedNftForBurn(null);
+            setUserInfo({ name: '', email: '', phone: '', address: '' });
+          }}
+        />
+      )}
+
+      {/* Admin Panel Modal */}
+      {showAdminPanel && isAdmin && (
+        <AdminPanelModal
+          isOpen={showAdminPanel}
+          onClose={() => setShowAdminPanel(false)}
+          burnRewards={burnRewards}
+          onRewardsUpdate={setBurnRewards}
         />
       )}
       </div>
@@ -718,7 +868,7 @@ function EkoListCard({ eko, onBuyClick, onCancelClick, currentUserAddress }: {
 function ListEkoModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const account = useActiveAccount();
   const { mutate: sendTransaction, isPending } = useSendTransaction();
-  const { price: polPrice } = useCryptoPrice('matic-network');
+  const { polPrice } = useCryptoPrice();
   const [ownedNfts, setOwnedNfts] = useState<any[]>([]);
   const [loadingNfts, setLoadingNfts] = useState(false);
   const [selectedNft, setSelectedNft] = useState<any | null>(null);

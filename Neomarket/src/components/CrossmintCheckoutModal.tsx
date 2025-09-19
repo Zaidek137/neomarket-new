@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { useActiveAccount, ConnectButton } from 'thirdweb/react';
 import { CrossmintProvider, CrossmintHostedCheckout } from "@crossmint/client-sdk-react-ui";
 import { createThirdwebClient } from 'thirdweb';
+import { polygon } from 'thirdweb/chains';
 
 const client = createThirdwebClient({
   clientId: "dc56b7276133338ec60eebc93d1c38b1"
@@ -136,6 +137,7 @@ export default function CrossmintCheckoutModal({ isOpen, onClose, collectionTitl
                   </div>
                   <ConnectButton
                     client={client}
+                    chain={polygon}
                     appMetadata={{
                       name: "NeoMarket",
                       url: "https://neomarket.scavenjer.com"

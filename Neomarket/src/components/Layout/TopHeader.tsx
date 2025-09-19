@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Bell } from 'lucide-react';
 import { ConnectButton } from 'thirdweb/react';
 import { createWallet } from 'thirdweb/wallets';
+import { polygon } from 'thirdweb/chains';
 import { client } from '../../client';
 import { cn } from '../../lib/utils';
 
@@ -100,6 +101,7 @@ export default function TopHeader() {
               <ConnectButton 
                 client={client}
                 wallets={wallets}
+                chain={polygon}
                 connectModal={{
                   size: "compact",
                   showThirdwebBranding: false,

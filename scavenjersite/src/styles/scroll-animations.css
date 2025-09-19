@@ -1,0 +1,36 @@
+/* Scroll Animation Styles */
+.scroll-section {
+  position: relative;
+  min-height: calc(var(--vh, 1vh) * 400); /* default */
+}
+
+.scroll-item {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  min-height: calc(var(--vh, 1vh) * 100);
+  padding-top: 4rem;
+  padding-bottom: 4rem;
+}
+
+/* Ensure smooth scrolling only on non-touch devices */
+@media (hover: hover) and (pointer: fine) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .scroll-section {
+    min-height: auto;
+  }
+  
+  .scroll-item {
+    position: relative;
+    min-height: auto;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+  }
+}

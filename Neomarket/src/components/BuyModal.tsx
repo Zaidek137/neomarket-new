@@ -155,6 +155,7 @@ const BuyModal: React.FC<BuyModalProps> = ({ listing, metadata, onClose, client,
             <ConnectButton 
               client={client} 
               wallets={wallets}
+              chain={polygon}
               connectModal={{
                 size: "compact",
                 showThirdwebBranding: false,

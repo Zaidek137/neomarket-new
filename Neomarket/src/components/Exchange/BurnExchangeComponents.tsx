@@ -333,9 +333,9 @@ export function BurnExchangeModal({
 
       // Success message
       if (reward.type === 'usdt') {
-        alert(`Exchange successful! ${reward.usdtAmount} USDT has been sent to your wallet.`);
+        alert(`Exchange successful! Your request for ${reward.usdtAmount} USDT has been logged. You will receive your USDT reward shortly.`);
       } else {
-        alert(`Exchange successful! Your ${reward.customReward?.title} reward will be processed.`);
+        alert(`Exchange successful! Your ${reward.customReward?.title} reward request has been logged and will be processed.`);
       }
 
       // Refresh the NFT list to remove the transferred NFT from the display

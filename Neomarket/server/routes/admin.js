@@ -1,5 +1,6 @@
 import express from 'express';
 import supabaseRewardStorage from '../services/supabaseRewardStorage.js';
+import exchangeLogStorage from '../services/exchangeLogStorage.js';
 
 const router = express.Router();
 
@@ -187,6 +188,47 @@ router.get('/stats', async (req, res) => {
 
   } catch (error) {
     console.error('Error fetching stats:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/admin/pending-exchanges
+ * Get pending exchanges for manual USDT processing
+ */
+router.get('/pending-exchanges', async (req, res) => {
+  try {
+    const pendingExchanges = await exchangeLogStorage.getPendingExchanges();
+
+    res.json({ success: true, exchanges: pendingExchanges });
+
+  } catch (error) {
+    console.error('Error fetching pending exchanges:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/admin/mark-processed
+ * Mark an exchange as processed
+ */
+router.post('/mark-processed', async (req, res) => {
+  try {
+    const { exchangeId, adminWallet, usdtTransactionHash } = req.body;
+
+    if (!exchangeId || !adminWallet) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: exchangeId, adminWallet'
+      });
+    }
+
+    const result = await exchangeLogStorage.markAsProcessed(exchangeId, adminWallet, usdtTransactionHash);
+
+    res.json({ success: true, exchange: result });
+
+  } catch (error) {
+    console.error('Error marking exchange as processed:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

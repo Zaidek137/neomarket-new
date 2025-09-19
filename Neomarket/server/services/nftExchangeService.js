@@ -7,6 +7,7 @@ import { transfer } from "thirdweb/extensions/erc20";
 import { polygon } from "thirdweb/chains";
 import { client, serverWalletConfig, contracts, rewardConfig } from "../config/thirdweb.js";
 import supabaseRewardStorage from "./supabaseRewardStorage.js";
+import exchangeLogStorage from "./exchangeLogStorage.js";
 
 /**
  * NFT Exchange Service
@@ -54,25 +55,35 @@ class NFTExchangeService {
     collectionAddress,
     tokenId,
     reward,
-    userInfo = null
+    userInfo = null,
+    transferTransactionHash = null
   }) {
     try {
-      // Step 1: Send USDT reward to user
-      if (reward.type === 'usdt' && reward.usdtAmount > 0) {
-        await this.sendUSDTReward(userAddress, reward.usdtAmount);
-      }
+      // Log the exchange event for manual processing
+      const exchangeLog = await exchangeLogStorage.logExchange({
+        userWalletAddress: userAddress,
+        collectionAddress,
+        tokenId,
+        rewardId: reward.id,
+        usdtAmount: reward.usdtAmount,
+        rewardType: reward.type,
+        transferTransactionHash,
+        customRewardData: reward.customReward,
+        userInfo
+      });
 
-      // Step 2: Handle custom rewards (log for manual processing)
-      if (reward.type === 'custom' && reward.customReward) {
-        await this.logCustomReward(userAddress, reward.customReward, userInfo);
-      }
-
-      console.log(`Successfully processed NFT exchange for token ${tokenId} from collection ${collectionAddress}. NFT is now safely stored in server wallet.`);
+      console.log(`✅ NFT exchange logged for manual processing:`);
+      console.log(`   - User: ${userAddress}`);
+      console.log(`   - NFT: Token ${tokenId} from ${collectionAddress}`);
+      console.log(`   - Reward: ${reward.usdtAmount} USDT`);
+      console.log(`   - Log ID: ${exchangeLog.id}`);
+      console.log(`   - Status: Pending manual USDT transfer`);
       
       return {
         success: true,
-        transactionHash: null, // Would contain actual transaction hash
-        message: `Exchange completed successfully. ${reward.usdtAmount} USDT sent to ${userAddress}`
+        exchangeLogId: exchangeLog.id,
+        message: `Exchange logged successfully. Admin will process ${reward.usdtAmount} USDT payment to ${userAddress}`,
+        pendingAction: `Send ${reward.usdtAmount} USDT to ${userAddress}`
       };
 
     } catch (error) {
@@ -174,6 +185,20 @@ class NFTExchangeService {
    */
   async getBurnRewards() {
     return await supabaseRewardStorage.getBurnRewards();
+  }
+
+  /**
+   * Get pending exchanges for admin review
+   */
+  async getPendingExchanges() {
+    return await exchangeLogStorage.getPendingExchanges();
+  }
+
+  /**
+   * Mark exchange as processed by admin
+   */
+  async markExchangeProcessed(exchangeId, adminWallet, usdtTransactionHash) {
+    return await exchangeLogStorage.markAsProcessed(exchangeId, adminWallet, usdtTransactionHash);
   }
 
   /**

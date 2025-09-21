@@ -65,7 +65,7 @@ export const ADMIN_WALLETS = [
 ### 4. NFT Contract Configuration
 
 The system checks for Eko ownership using the correct NFT collection contract:
-- Contract Address: `0x45a5A7F0c407F8178B138C74906bed90414fC923`
+- Contract Address: `0x98E52EF271F0ff90F2f76A40Cb6A27dA011d279F`
 - Network: Polygon (Chain ID: 137)
 - Uses `getOwnedNFTs` from ThirdWeb extensions for reliable verification
 

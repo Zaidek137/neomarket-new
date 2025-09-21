@@ -3,13 +3,14 @@ import { Search, Grid3X3, List, SlidersHorizontal, ChevronDown, ShoppingCart, Ey
 import { cn } from '../../lib/utils';
 import { useActiveAccount, useSendTransaction, MediaRenderer } from 'thirdweb/react';
 import { getContract, readContract, prepareContractCall, toWei } from 'thirdweb';
-import { getOwnedNFTs, getNFT } from 'thirdweb/extensions/erc721';
+import { getOwnedNFTs, getNFT, balanceOf, totalSupply, ownerOf } from 'thirdweb/extensions/erc721';
 import { polygon } from 'thirdweb/chains';
 import { client } from '../../client';
 import { CONTRACT_ADDRESS, NFT_COLLECTION_ADDRESS, WMATIC_ADDRESS } from '../../config/constants';
 import BuyModal from '../BuyModal';
 import { useCryptoPrice } from '../../hooks/useCryptoPrice';
 import { BurnExchangeModal, UserInfoModal, AdminPanelModal, BurnReward, UserInfo } from './BurnExchangeComponents';
+import { rewardsService } from '../../services/rewardsService';
 
 interface ListedEko {
   listingId: bigint;
@@ -81,21 +82,15 @@ export default function ExchangePage() {
     }
   }, [account?.address]);
 
-  // Fetch burn rewards from server
+  // Fetch burn rewards directly from Supabase
   useEffect(() => {
     const fetchBurnRewards = async () => {
       if (!isAdmin) return;
       
       setLoadingRewards(true);
       try {
-        const response = await fetch('/api/admin/rewards');
-        const data = await response.json();
-        
-        if (data.success) {
-          setBurnRewards(data.rewards);
-        } else {
-          console.error('Failed to fetch burn rewards:', data.error);
-        }
+        const rewards = await rewardsService.getBurnRewards();
+        setBurnRewards(rewards);
       } catch (error) {
         console.error('Error fetching burn rewards:', error);
       } finally {
@@ -873,19 +868,74 @@ function ListEkoModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
   const [loadingNfts, setLoadingNfts] = useState(false);
   const [selectedNft, setSelectedNft] = useState<any | null>(null);
   const [price, setPrice] = useState('');
+  const [cacheLoaded, setCacheLoaded] = useState(false);
 
   // Calculate USD equivalent
   const usdPrice = price && polPrice ? (parseFloat(price) * polPrice).toFixed(2) : '0.00';
 
+  // Handle escape key to close modal
   useEffect(() => {
-    if (isOpen && account) {
-      fetchOwnedNFTs();
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      return () => document.removeEventListener('keydown', handleEscape);
     }
-  }, [isOpen, account]);
+  }, [isOpen, onClose]);
+
+  // Load cached data when modal opens, auto-scan on first visit
+  useEffect(() => {
+    if (isOpen && account?.address) {
+      // Try to load from cache first
+      const cacheKey = `eko_cache_${account.address.toLowerCase()}`;
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          const cacheAge = Date.now() - timestamp;
+          
+          // Cache persists indefinitely until manual refresh
+          console.log(`📦 [ListEkoModal] Loading cached NFT data (${Math.round(cacheAge / 1000 / 60 / 60)}h old)`);
+          setOwnedNfts(data.map((eko: any) => ({
+            id: BigInt(eko.tokenId),
+            metadata: {
+              name: eko.name,
+              image: eko.image,
+              description: eko.description
+            }
+          })));
+          setCacheLoaded(true);
+        } else {
+          // No cache available - this is first visit, auto-scan
+          console.log('🚀 [ListEkoModal] First visit detected - auto-scanning for NFTs...');
+          setOwnedNfts([]);
+          setCacheLoaded(false);
+          // Auto-scan on first visit
+          fetchOwnedNFTs();
+        }
+      } catch (error) {
+        console.warn('⚠️ [ListEkoModal] Error loading cache:', error);
+        // On error, auto-scan
+        fetchOwnedNFTs();
+      }
+    } else if (!isOpen) {
+      // Reset when modal closes
+      setOwnedNfts([]);
+      setCacheLoaded(false);
+      setSelectedNft(null);
+      setPrice('');
+    }
+  }, [isOpen, account?.address]);
 
   const fetchOwnedNFTs = async () => {
     if (!account) return;
     setLoadingNfts(true);
+    console.log('🔄 [ListEkoModal] Fetching owned NFTs for:', account.address);
+    console.log('📍 [ListEkoModal] Using collection address:', NFT_COLLECTION_ADDRESS);
     try {
       const contract = getContract({
         client,
@@ -893,12 +943,121 @@ function ListEkoModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
         address: NFT_COLLECTION_ADDRESS,
       });
 
-      const nfts = await getOwnedNFTs({
-        contract,
-        owner: account.address,
-      });
+      // Try Thirdweb indexer first, then manual fallback
+      let nfts: any[] = [];
+      let usingManualScan = false;
+      
+      try {
+        console.log('🔄 [ListEkoModal] Trying Thirdweb indexer...');
+        nfts = await getOwnedNFTs({
+          contract,
+          owner: account.address,
+        });
+        
+        console.log('📊 [ListEkoModal] Thirdweb returned:', nfts.length, 'NFTs');
+        
+        // If Thirdweb returns 0, try manual balance check
+        if (nfts.length === 0) {
+          console.log('🔄 [ListEkoModal] Trying manual balance check...');
+          
+          const balance = await balanceOf({
+            contract,
+            owner: account.address,
+          });
+          
+          const balanceNum = Number(balance);
+          console.log(`📊 [ListEkoModal] Manual balance: ${balanceNum} NFTs`);
+          
+          if (balanceNum > 0) {
+            console.log(`🔄 [ListEkoModal] Manual scan found ${balanceNum} NFTs, using range scan...`);
+            usingManualScan = true;
+            
+            // Use range scanning approach (simplified for listing modal)
+            try {
+              const totalSupplyResult = await totalSupply({ contract });
+              const totalSupplyNum = Number(totalSupplyResult);
+              console.log(`📊 [ListEkoModal] Total supply: ${totalSupplyNum}`);
+              
+              const manualNfts = [];
+              const maxScan = Math.min(totalSupplyNum, 200); // Manual scan up to 200 tokens
+              let foundCount = 0;
+              
+              console.log(`📊 [ListEkoModal] MANUAL SCAN: Scanning first ${maxScan} tokens`);
+              
+              for (let tokenId = 0; tokenId < maxScan && foundCount < balanceNum; tokenId++) {
+                try {
+                  const owner = await ownerOf({
+                    contract,
+                    tokenId: BigInt(tokenId),
+                  });
+                  
+                  if (owner.toLowerCase() === account.address.toLowerCase()) {
+                    const nft = await getNFT({
+                      contract,
+                      tokenId: BigInt(tokenId),
+                    });
+                    
+                    manualNfts.push(nft);
+                    foundCount++;
+                    console.log(`✅ [ListEkoModal] Found owned token ${tokenId}${tokenId === 0 ? ' (Token ID 0!)' : ''}`);
+                    
+                    if (foundCount >= Math.min(balanceNum, 10)) {
+                      console.log(`🎉 [ListEkoModal] Found ${foundCount} NFTs, stopping scan`);
+                      break;
+                    }
+                  }
+                } catch (tokenError) {
+                  // Token might not exist, continue
+                  continue;
+                }
+              }
+              
+              nfts = manualNfts;
+              console.log(`🎉 [ListEkoModal] Range scan found ${manualNfts.length} NFTs`);
+            } catch (rangeError) {
+              console.warn('⚠️ [ListEkoModal] Range scan failed:', rangeError);
+              nfts = [];
+            }
+          }
+        }
+        
+      } catch (indexError) {
+        console.warn('⚠️ [ListEkoModal] Thirdweb indexer failed:', indexError);
+        nfts = [];
+      }
+
+      console.log('📊 [ListEkoModal] Final count:', nfts.length);
+      console.log('📊 [ListEkoModal] Using manual scan:', usingManualScan);
+      console.log('📊 [ListEkoModal] Raw NFT data:', nfts.map(nft => ({ 
+        id: nft.id?.toString(), 
+        tokenAddress: nft.tokenAddress,
+        owner: nft.owner 
+      })));
 
       setOwnedNfts(nfts);
+      setCacheLoaded(false); // This is fresh data, not cache
+      
+      // Save to cache if we got data
+      if (nfts.length > 0 && account?.address) {
+        try {
+          const cacheKey = `eko_cache_${account.address.toLowerCase()}`;
+          const cacheData = {
+            data: nfts.map(nft => ({
+              tokenId: nft.id.toString(),
+              name: nft.metadata?.name || `Eko #${nft.id}`,
+              image: nft.metadata?.image || '',
+              description: nft.metadata?.description || ''
+            })),
+            timestamp: Date.now(),
+            scanTimestamp: Date.now()
+          };
+          localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+          console.log('💾 [ListEkoModal] Saved NFT data to cache');
+        } catch (error) {
+          console.warn('⚠️ [ListEkoModal] Error saving cache:', error);
+        }
+      }
+      
     } catch (error) {
       console.error('Error fetching owned NFTs:', error);
     } finally {
@@ -950,17 +1109,63 @@ function ListEkoModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div 
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={(e) => {
+        // Close modal when clicking on backdrop
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
-        <h2 className="text-xl font-bold text-white mb-4">List Your Eko</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-white">List Your Eko</h2>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-white transition-colors p-1"
+            title="Close"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
         
         {!account ? (
-          <p className="text-slate-400 mb-4">Please connect your wallet to list your Ekos</p>
+          <div className="space-y-4">
+            <p className="text-slate-400">Please connect your wallet to list your Ekos</p>
+            <button
+              onClick={onClose}
+              className="w-full px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-all duration-200"
+            >
+              Close
+            </button>
+          </div>
         ) : (
           <>
-            <p className="text-slate-400 mb-4">Select an Eko from your collection to list for sale</p>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-slate-400">Select an Eko from your collection to list for sale</p>
+              <button
+                onClick={fetchOwnedNFTs}
+                disabled={loadingNfts}
+                className="flex items-center gap-2 px-3 py-1 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-white rounded text-sm transition-all duration-200 disabled:opacity-50"
+                title="Refresh: Use if you recently bought/minted NFTs or expect more to appear"
+              >
+                <span className={`text-xs ${loadingNfts ? 'animate-spin' : ''}`}>🔄</span>
+                {loadingNfts ? 'Refreshing...' : (cacheLoaded ? 'Refresh' : 'Load NFTs')}
+              </button>
+            </div>
             
-            {loadingNfts ? (
+            {ownedNfts.length === 0 && !loadingNfts ? (
+              <div className="text-center py-8">
+                <p className="text-slate-400 mb-2">{cacheLoaded ? 'No NFTs in cache' : 'No NFTs loaded'}</p>
+                <p className="text-slate-500 text-sm">
+                  {cacheLoaded ? 'Click "Refresh" if you recently acquired NFTs' : 'Click "Load NFTs" to scan your collection'}
+                </p>
+              </div>
+            ) : loadingNfts ? (
               <div className="text-center py-8">
                 <div className="animate-spin w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full mx-auto mb-2"></div>
                 <p className="text-slate-400">Loading your Ekos...</p>

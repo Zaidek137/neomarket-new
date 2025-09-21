@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { User, Plus, ShoppingCart, Eye, ExternalLink, Wallet, Sparkles } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { User, Plus, ShoppingCart, Eye, ExternalLink, Wallet, Sparkles, RefreshCw, Clock } from 'lucide-react';
 import { useActiveAccount, useSendTransaction } from 'thirdweb/react';
 import { getContract, prepareContractCall, toWei } from 'thirdweb';
-import { getOwnedNFTs } from 'thirdweb/extensions/erc721';
+import { balanceOf, totalSupply, getNFT, ownerOf } from 'thirdweb/extensions/erc721';
 import { polygon } from 'thirdweb/chains';
 import { useNavigate } from 'react-router-dom';
 import { client } from '../client';
@@ -29,6 +29,11 @@ export default function MyEkosPage() {
   const { polPrice } = useCryptoPrice();
   const [ownedEkos, setOwnedEkos] = useState<OwnedEko[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [usingManualScan, setUsingManualScan] = useState(false);
+  const [lastFullScan, setLastFullScan] = useState<Date | null>(null);
+  const [cacheLoaded, setCacheLoaded] = useState(false);
   const [showListModal, setShowListModal] = useState(false);
   const [selectedEko, setSelectedEko] = useState<OwnedEko | null>(null);
   const [listingPrice, setListingPrice] = useState('');
@@ -37,12 +42,22 @@ export default function MyEkosPage() {
   const [raritySelectedEko, setRaritySelectedEko] = useState<OwnedEko | null>(null);
   const [collectionNFTs, setCollectionNFTs] = useState<any[]>([]);
 
-  // Fetch user's owned Ekos
+  // Load cached data when wallet connects, auto-scan on first visit
   useEffect(() => {
     if (account?.address) {
-      fetchOwnedEkos();
+      // Try to load from cache first
+      const cacheLoaded = loadFromCache(account.address);
+      if (!cacheLoaded) {
+        // No cache available - this is first visit, auto-scan
+        console.log('🚀 First visit detected - auto-scanning for NFTs...');
+        setOwnedEkos([]);
+        setCacheLoaded(false);
+        // Auto-scan on first visit
+        fetchOwnedEkos(true);
+      }
     } else {
       setOwnedEkos([]);
+      setCacheLoaded(false);
     }
   }, [account?.address]);
 
@@ -64,12 +79,195 @@ export default function MyEkosPage() {
     loadCollectionMetadata();
   }, []);
 
-  const fetchOwnedEkos = async () => {
+  // Cache management functions
+  const getCacheKey = (walletAddress: string) => `eko_cache_${walletAddress.toLowerCase()}`;
+  
+  const loadFromCache = (walletAddress: string) => {
+    try {
+      const cacheKey = getCacheKey(walletAddress);
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const { data, timestamp, scanTimestamp } = JSON.parse(cached);
+        const cacheAge = Date.now() - timestamp;
+        
+        // Cache persists indefinitely until manual refresh
+        console.log(`📦 Loading cached NFT data (${Math.round(cacheAge / 1000 / 60 / 60)}h old)`);
+        setOwnedEkos(data);
+        setLastRefresh(new Date(timestamp));
+        setLastFullScan(scanTimestamp ? new Date(scanTimestamp) : null);
+        setCacheLoaded(true);
+        setUsingManualScan(true); // Indicate this was from manual scan cache
+        return true;
+      }
+    } catch (error) {
+      console.warn('⚠️ Error loading cache:', error);
+    }
+    return false;
+  };
+  
+  const saveToCache = (walletAddress: string, data: OwnedEko[], scanTime: Date) => {
+    try {
+      const cacheKey = getCacheKey(walletAddress);
+      const cacheData = {
+        data,
+        timestamp: scanTime.getTime(),
+        scanTimestamp: scanTime.getTime()
+      };
+      localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+      console.log('💾 Saved NFT data to cache');
+    } catch (error) {
+      console.warn('⚠️ Error saving cache:', error);
+    }
+  };
+
+  // Manual NFT scanning fallback using totalSupply + ownerOf
+  const manualNFTScan = async (nftContract: any, walletAddress: string, isForceRefresh = false) => {
+    console.log('🔧 Starting manual NFT scan (range scanning method)...');
+    console.log('⚡ RPC Usage Mode:', isForceRefresh ? 'FULL SCAN (Force Refresh)' : 'LIMITED SCAN (Auto)');
+    
+    try {
+      // Method 1: Check balance first
+      console.log('📊 Checking NFT balance...');
+      const balance = await balanceOf({
+        contract: nftContract,
+        owner: walletAddress,
+      });
+      
+      const balanceNum = Number(balance);
+      console.log(`📊 Manual balance check: ${balanceNum} NFTs`);
+      
+      if (balanceNum === 0) {
+        console.log('❌ Manual scan: No NFTs found via balance check');
+        return [];
+      }
+      
+      // Method 2: Get total supply to know the range of token IDs
+      console.log('📊 Getting total supply for range scanning...');
+      const totalSupplyResult = await totalSupply({
+        contract: nftContract,
+      });
+      
+      const totalSupplyNum = Number(totalSupplyResult);
+      console.log(`📊 Total supply: ${totalSupplyNum} NFTs`);
+      
+      if (totalSupplyNum === 0) {
+        console.log('❌ Total supply is 0, no NFTs exist');
+        return [];
+      }
+      
+      // Method 3: Range scan through token IDs to find owned ones (starting from 0)
+      // Manual scan only: up to 200 tokens
+      const maxScanRange = Math.min(totalSupplyNum, 200); // Manual refresh: scan up to 200 tokens
+      
+      console.log(`🔍 Range scanning token IDs 0-${maxScanRange - 1} (MANUAL scan)...`);
+      const ownedNFTs = [];
+      let foundCount = 0;
+      
+      // Scan in batches to avoid overwhelming RPC
+      const batchSize = 40; // Optimized batch size for 200 token limit
+      for (let start = 0; start < maxScanRange && foundCount < balanceNum; start += batchSize) {
+        const end = Math.min(start + batchSize - 1, maxScanRange - 1);
+        console.log(`🔍 Scanning batch: tokens ${start}-${end}`);
+        
+        const batchPromises = [];
+        for (let tokenId = start; tokenId <= end && foundCount < balanceNum; tokenId++) {
+          batchPromises.push(
+            ownerOf({
+              contract: nftContract,
+              tokenId: BigInt(tokenId),
+            }).then(owner => ({ tokenId, owner }))
+            .catch(error => {
+              // Token might not exist or other error
+              console.warn(`⚠️ Token ${tokenId} check failed:`, error.message);
+              return null;
+            })
+          );
+        }
+        
+        try {
+          const batchResults = await Promise.all(batchPromises);
+          
+          for (const result of batchResults) {
+            if (result && result.owner.toLowerCase() === walletAddress.toLowerCase()) {
+              console.log(`✅ Found owned token: ${result.tokenId}${result.tokenId === 0 ? ' (Token ID 0!)' : ''}`);
+              foundCount++;
+              
+              // Get NFT metadata
+              try {
+                const nft = await getNFT({
+                  contract: nftContract,
+                  tokenId: BigInt(result.tokenId),
+                });
+                
+                ownedNFTs.push({
+                  id: BigInt(result.tokenId),
+                  tokenAddress: NFT_COLLECTION_ADDRESS,
+                  owner: walletAddress,
+                  metadata: nft.metadata,
+                });
+                
+                console.log(`✅ Retrieved metadata for token ${result.tokenId}`);
+              } catch (metadataError) {
+                console.warn(`⚠️ Could not get metadata for token ${result.tokenId}:`, metadataError);
+                // Add without metadata
+                ownedNFTs.push({
+                  id: BigInt(result.tokenId),
+                  tokenAddress: NFT_COLLECTION_ADDRESS,
+                  owner: walletAddress,
+                  metadata: {
+                    name: `Eko #${result.tokenId}`,
+                    description: '',
+                    image: '',
+                  },
+                });
+              }
+              
+              // Stop if we found all expected NFTs
+              if (foundCount >= balanceNum) {
+                console.log(`🎉 Found all ${balanceNum} expected NFTs, stopping scan`);
+                break;
+              }
+            }
+          }
+        } catch (batchError) {
+          console.warn(`⚠️ Batch ${start}-${end} failed:`, batchError);
+        }
+        
+        // Small delay between batches to avoid rate limiting
+        if (start + batchSize <= maxScanRange) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+      
+      console.log(`🎉 Manual range scan found ${ownedNFTs.length}/${balanceNum} NFTs`);
+      
+      // Warn if we didn't find all expected NFTs
+      if (ownedNFTs.length < balanceNum) {
+        console.warn(`⚠️ MANUAL SCAN: Found ${ownedNFTs.length}/${balanceNum} NFTs. Some NFTs may have token IDs > 199.`);
+        console.warn(`💡 TIP: If expecting more NFTs, they may have higher token IDs beyond our scan range.`);
+      }
+      
+      return ownedNFTs;
+      
+    } catch (error) {
+      console.error('❌ Manual NFT scan failed:', error);
+      return [];
+    }
+  };
+
+  const fetchOwnedEkos = async (forceRefresh = false) => {
     if (!account?.address) return;
 
-    setLoading(true);
+    const isManualRefresh = forceRefresh;
+    if (isManualRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
     try {
-      console.log('Fetching owned NFTs for:', account.address);
+      console.log('🔄 Fetching owned NFTs for:', account.address, forceRefresh ? '(FORCE REFRESH)' : '');
+      console.log('📍 Using collection address:', NFT_COLLECTION_ADDRESS);
       
       // Get the NFT contract
       const nftContract = getContract({
@@ -78,18 +276,40 @@ export default function MyEkosPage() {
         address: NFT_COLLECTION_ADDRESS
       });
 
-      // Fetch owned NFTs
-      const ownedNFTs = await getOwnedNFTs({
-        contract: nftContract,
-        owner: account.address
-      });
+      console.log('🔄 Cache busting:', forceRefresh ? 'YES' : 'NO');
 
-      console.log('Found NFTs:', ownedNFTs.length);
+      // Manual scan only - no automatic scanning to save RPC
+      let ownedNFTs: any[] = [];
+      let usingManualScan = false;
+      
+      if (forceRefresh) {
+        console.log('🔄 Manual refresh requested, performing manual scan...');
+        try {
+          ownedNFTs = await manualNFTScan(nftContract, account.address, forceRefresh);
+          usingManualScan = true;
+          setLastFullScan(new Date());
+          console.log(`🎉 Manual scan found ${ownedNFTs.length} NFTs`);
+        } catch (manualError) {
+          console.error('❌ Manual scan failed:', manualError);
+          ownedNFTs = [];
+        }
+      } else {
+        console.log('💡 No automatic scanning - Click "Refresh" to scan for your NFTs');
+        ownedNFTs = [];
+      }
+
+      console.log('📊 Final NFT count:', ownedNFTs.length);
+      console.log('📊 Using manual scan:', usingManualScan);
+      console.log('📊 Raw NFT data:', ownedNFTs.map(nft => ({ 
+        id: nft.id?.toString(), 
+        tokenAddress: nft.tokenAddress,
+        owner: nft.owner 
+      })));
 
       // Transform NFT data to our format
       const formattedEkos = ownedNFTs.map((nft) => {
         const imageUrl = nft.metadata?.image || '';
-        console.log('NFT Image URL:', imageUrl, '-> Converted:', ipfsToHttp(imageUrl));
+        console.log('🖼️ NFT Image URL:', imageUrl, '-> Converted:', ipfsToHttp(imageUrl));
         
         return {
           tokenId: nft.id.toString(),
@@ -100,13 +320,25 @@ export default function MyEkosPage() {
         };
       });
 
+      const scanTime = new Date();
       setOwnedEkos(formattedEkos);
+      setLastRefresh(scanTime);
+      setUsingManualScan(usingManualScan);
+      setCacheLoaded(false); // This is fresh data, not cache
+      
+      // Save to cache if we got data
+      if (formattedEkos.length > 0 && account?.address) {
+        saveToCache(account.address, formattedEkos, scanTime);
+      }
+      
+      console.log(`✅ Successfully loaded ${formattedEkos.length} Ekos ${usingManualScan ? '(via manual scan)' : '(via Thirdweb indexer)'}`);
       
     } catch (error) {
-      console.error('Error fetching owned Ekos:', error);
+      console.error('❌ Error fetching owned Ekos:', error);
       setOwnedEkos([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -368,23 +600,53 @@ export default function MyEkosPage() {
     <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <User className="text-cyan-400" size={32} />
-          <div>
-            <h1 className="text-3xl font-bold text-white">My Ekos</h1>
-            <p className="text-slate-400">Manage your Eko collection</p>
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-3">
+            <User className="text-cyan-400" size={32} />
+            <div>
+              <h1 className="text-3xl font-bold text-white">My Ekos</h1>
+              <p className="text-slate-400">Manage your Eko collection</p>
+              {lastRefresh && (
+                <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
+                  <Clock size={12} />
+                  <span>Last updated: {lastRefresh.toLocaleTimeString()}</span>
+                  {cacheLoaded && (
+                    <span className="bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded text-xs">
+                      Cached
+                    </span>
+                  )}
+                  {usingManualScan && !cacheLoaded && (
+                    <span className="bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded text-xs">
+                      Fresh Scan
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
+          
+          {account && (
+            <button
+              onClick={() => fetchOwnedEkos(true)}
+              disabled={refreshing}
+              className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-white rounded-lg font-medium transition-all duration-200 disabled:opacity-50"
+              title="Refresh: Use if you recently bought/minted NFTs or expect more to appear"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </button>
+          )}
+          
+          {account && ownedEkos.length > 0 && (
+            <button
+              onClick={() => navigate('/exchange')}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white rounded-lg font-medium transition-all duration-200 shadow-lg ml-4"
+            >
+              <ExternalLink size={16} />
+              View Exchange
+            </button>
+          )}
         </div>
-        
-        {account && ownedEkos.length > 0 && (
-          <button
-            onClick={() => navigate('/exchange')}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white rounded-lg font-medium transition-all duration-200"
-          >
-            <ExternalLink size={16} />
-            View Exchange
-          </button>
-        )}
       </div>
 
       {/* Wallet Connection Check */}
@@ -400,6 +662,26 @@ export default function MyEkosPage() {
         </div>
       ) : (
         <>
+          {/* Smart Caching Notice */}
+          {!loading && !refreshing && (
+            <div className="bg-green-900/20 border border-green-600/30 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <RefreshCw className="text-green-400 mt-0.5" size={16} />
+                <div className="text-sm">
+                  <p className="text-green-200 font-medium">NOTICE:</p>
+                  <div className="text-green-300/80 mt-1 space-y-1">
+                    <p>• <strong>Use "Refresh"</strong> only if you recently bought/minted NFTs or expect more to appear.</p>
+                    {lastFullScan && (
+                      <p className="text-green-400 text-xs mt-2">
+                        Last fresh scan: {lastFullScan.toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">

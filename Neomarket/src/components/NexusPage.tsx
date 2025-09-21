@@ -10,7 +10,7 @@ import ProposalDetailModal from './ProposalDetailModal';
 
 export default function NexusPage() {
   const account = useActiveAccount();
-  const { ownsEko, loading: ekoLoading } = useEkoOwnership();
+  const { ownsEko, loading: ekoLoading, needsManualCheck, checkOwnership } = useEkoOwnership();
   const isAdmin = isAdminWallet(account?.address);
   
   const [selectedTab, setSelectedTab] = useState<'active' | 'history'>('active');
@@ -198,12 +198,31 @@ export default function NexusPage() {
         </div>
       ) : !ekoLoading && !ownsEko ? (
         <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-xl p-6 text-center">
-          <div className="space-y-3">
+          <div className="space-y-4">
             <AlertCircle className="text-yellow-400 mx-auto" size={48} />
             <h3 className="text-xl font-bold text-white">Eko Required</h3>
             <p className="text-slate-400">
               You need to own at least one Eko NFT to participate in voting.
             </p>
+            {needsManualCheck && (
+              <button
+                onClick={checkOwnership}
+                disabled={ekoLoading}
+                className="mx-auto flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-all duration-200"
+              >
+                {ekoLoading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Checking...
+                  </>
+                ) : (
+                  <>
+                    <Vote size={16} />
+                    Check Eko Ownership
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
       ) : (

@@ -10,7 +10,7 @@ const client = createThirdwebClient({
 });
 
 const clientApiKey = "ck_production_5pLaG5zFyQ6nW2RuHYgapoJKcG4eV8ac5wHvki3bzyBA4MjBRxFybM2zCcQzyH1LttngQDgdDzTK8d47iwfxYrdSpAEwz9cpnrWuR9FwYxApVg9YMPXgPrTkNv4JWY6BgVtNNRmuM25Rm6R1i4KPL8dkbrv3UGLkpYgx83hp6eLRKw4oSmKfEN7z8tKcbX8k91HKcvpZCBDGcHn7kXpUfDCf";
-const COLLECTION_ID = 'bf55192e-339c-40a2-a705-c7456b2f3c71';
+const COLLECTION_ID = '53ffb7b4-fc5e-4b61-b1e9-90bba9e23978';
 
 interface CrossmintCheckoutModalProps {
   isOpen: boolean;

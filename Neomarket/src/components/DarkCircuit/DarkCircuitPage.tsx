@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getContract, readContract, prepareEvent } from "thirdweb";
-import { useActiveAccount, MediaRenderer, useContractEvents } from "thirdweb/react";
+import { getContract, readContract } from "thirdweb";
+import { useActiveAccount, MediaRenderer } from "thirdweb/react";
 import { client } from '../../client';
 import { polygon } from 'thirdweb/chains';
 import { NFT_COLLECTION_ADDRESS } from '../../config/constants';
@@ -14,14 +14,12 @@ const nftContract = getContract({
     address: NFT_COLLECTION_ADDRESS,
 });
 
-// Prepare events for listening to new mints and transfers
-const transferEvent = prepareEvent({
-    signature: "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
-});
+// Note: Contract event listening removed to reduce RPC calls
+// Data now refreshes every 6 hours instead of continuous polling
 
 const LAUNCH_EPOCH = new Date('2024-01-01T00:00:00Z').getTime();
-const REFRESH_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-const BACKUP_REFRESH_INTERVAL = 60 * 60 * 1000; // 1 hour backup refresh
+const REFRESH_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours in milliseconds (reduced RPC usage)
+const BACKUP_REFRESH_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours backup refresh (same as main)
 
 interface RewardFormData {
     name: string;
@@ -91,6 +89,7 @@ export default function DarkCircuitPage() {
     const [submittingForm, setSubmittingForm] = useState(false);
     const [lastSupplyUpdate, setLastSupplyUpdate] = useState<Date | null>(null);
     const [supplyChanged, setSupplyChanged] = useState(false);
+    const [nextRefresh, setNextRefresh] = useState<Date | null>(null);
     const activeAccount = useActiveAccount();
 
     const [formData, setFormData] = useState<RewardFormData>({
@@ -127,6 +126,7 @@ export default function DarkCircuitPage() {
         }
 
         try {
+            setRefreshing(true);
             const supply = await readContract({
                 contract: nftContract,
                 method: "function totalSupply() view returns (uint256)",
@@ -137,10 +137,17 @@ export default function DarkCircuitPage() {
             if (supplyNumber !== totalSupply) {
                 if (totalSupply > 0) setSupplyChanged(true);
                 setTotalSupply(supplyNumber);
-                setLastSupplyUpdate(new Date());
             }
+            
+            const now = new Date();
+            setLastSupplyUpdate(now);
+            // Set next refresh time (6 hours from now)
+            setNextRefresh(new Date(now.getTime() + REFRESH_INTERVAL));
         } catch (error) {
             console.error('Error fetching total supply:', error);
+            setError('Failed to refresh data from blockchain');
+        } finally {
+            setRefreshing(false);
         }
     }, [totalSupply, lastSupplyUpdate]);
 
@@ -253,6 +260,21 @@ export default function DarkCircuitPage() {
         return `${days}d ago`;
     };
 
+    // Format next refresh time
+    const formatNextRefresh = () => {
+        if (!nextRefresh) return "Unknown";
+        const now = new Date();
+        const diff = nextRefresh.getTime() - now.getTime();
+        
+        if (diff <= 0) return "Soon";
+        
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        
+        if (hours > 0) return `${hours}h ${minutes}m`;
+        return `${minutes}m`;
+    };
+
     // Initialize data
     useEffect(() => {
         const initializeData = async () => {
@@ -287,14 +309,12 @@ export default function DarkCircuitPage() {
         return () => clearTimeout(timeoutId);
     }, [checkOwnership]);
 
-    // Auto refresh
+    // Auto refresh every 6 hours (reduced RPC usage)
     useEffect(() => {
         const interval = setInterval(fetchTotalSupply, REFRESH_INTERVAL);
-        const backupInterval = setInterval(fetchTotalSupply, BACKUP_REFRESH_INTERVAL);
         
         return () => {
             clearInterval(interval);
-            clearInterval(backupInterval);
         };
     }, [fetchTotalSupply]);
 
@@ -431,13 +451,18 @@ export default function DarkCircuitPage() {
                                             onClick={handleManualRefresh}
                                             disabled={refreshing}
                                             className="text-purple-400 hover:text-purple-300 disabled:opacity-50 p-1 rounded hover:bg-purple-500/20 transition-all"
-                                            title="Refresh quantum state"
+                                            title="Manual refresh (normally updates every 6 hours)"
                                         >
                                             <RefreshCw className={`w-2.5 h-2.5 ${refreshing ? 'animate-spin' : ''}`} />
                                         </motion.button>
                                     </div>
                                     <div className="text-2xl font-black text-white mb-1 text-center font-mono">{totalSupply}</div>
-                                    <div className="text-xs text-purple-300/70 text-center font-mono">Updated: {formatLastUpdate()}</div>
+                                    <div className="text-xs text-purple-300/70 text-center font-mono">
+                                        <div>Updated: {formatLastUpdate()}</div>
+                                        <div className="text-purple-400/60 mt-1">
+                                            Next refresh: {formatNextRefresh()} (6h cycle)
+                                        </div>
+                                    </div>
                                     {supplyChanged && (
                                         <motion.div 
                                             initial={{ scale: 0 }}

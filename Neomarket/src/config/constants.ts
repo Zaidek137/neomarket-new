@@ -9,7 +9,10 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (
 );
 
 export const CONTRACT_ADDRESS = "0x6649564Bf8992dbA38D24946FB95Acb1953610DE";
-export const NFT_COLLECTION_ADDRESS = "0x45a5A7F0c407F8178B138C74906bed90414fC923";
+export const NFT_COLLECTION_ADDRESS = "0x98E52EF271F0ff90F2f76A40Cb6A27dA011d279F";
+
+// Server wallet address for NFT exchanges (hardcoded for serverless approach)
+export const SERVER_WALLET_ADDRESS = "0xF17224EaA3c6410f16995b72b396067cf070a487";
 
 // Currency Addresses on Polygon Mainnet
 export const WMATIC_ADDRESS = NATIVE_TOKEN_ADDRESS;

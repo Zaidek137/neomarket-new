@@ -5,7 +5,9 @@ import { MediaRenderer } from 'thirdweb/react';
 import { getContract, prepareContractCall, readContract } from 'thirdweb';
 import { getOwnedNFTs } from 'thirdweb/extensions/erc721';
 import { polygon } from 'thirdweb/chains';
-import { NFT_COLLECTION_ADDRESS } from '../../config/constants';
+import { NFT_COLLECTION_ADDRESS, SERVER_WALLET_ADDRESS } from '../../config/constants';
+import { rewardsService } from '../../services/rewardsService';
+import { AdminExchangeLogsModal } from './AdminExchangeLogsModal';
 
 export interface BurnReward {
   id?: string; // ID from database
@@ -50,6 +52,8 @@ export function BurnExchangeModal({
 }) {
   const [ownedNfts, setOwnedNfts] = useState<any[]>([]);
   const [loadingNfts, setLoadingNfts] = useState(false);
+  const [refreshingNfts, setRefreshingNfts] = useState(false);
+  const [lastNftRefresh, setLastNftRefresh] = useState<Date | null>(null);
   const [selectedNft, setSelectedNft] = useState<any | null>(null);
   const [eligibleNfts, setEligibleNfts] = useState<Array<{nft: any, reward: BurnReward}>>([]);
 
@@ -59,53 +63,277 @@ export function BurnExchangeModal({
     }
   }, [isOpen, account, burnRewards]); // Re-fetch when rewards change
 
-  const fetchOwnedNFTs = async () => {
-    if (!account) return;
-    setLoadingNfts(true);
+  // Helper function to fetch NFT metadata
+  const fetchNFTMetadata = async (contract: any, tokenId: bigint) => {
+    console.log(`🖼️ Fetching metadata for token ${tokenId.toString()}...`);
     try {
-      // Fetch burn rewards from server
-      const rewardsResponse = await fetch('/api/exchange/rewards');
+      const tokenURI = await readContract({
+        contract,
+        method: "function tokenURI(uint256 tokenId) view returns (string)",
+        params: [tokenId]
+      });
+      console.log(`📄 Token URI for ${tokenId.toString()}:`, tokenURI);
       
-      if (!rewardsResponse.ok) {
-        throw new Error(`Server error: ${rewardsResponse.status} ${rewardsResponse.statusText}`);
+      // Default metadata
+      let metadata = {
+        name: `NFT #${tokenId.toString()}`,
+        image: null,
+        description: null,
+        attributes: []
+      };
+      
+      if (tokenURI) {
+        try {
+          // Handle IPFS URIs
+          let fetchUrl = tokenURI;
+          if (tokenURI.startsWith('ipfs://')) {
+            fetchUrl = tokenURI.replace('ipfs://', 'https://ipfs.io/ipfs/');
+          }
+          
+          console.log(`🌐 Fetching metadata from: ${fetchUrl}`);
+          const metadataResponse = await fetch(fetchUrl);
+          if (metadataResponse.ok) {
+            const metadataJson = await metadataResponse.json();
+            console.log(`✅ Metadata fetched for token ${tokenId.toString()}:`, metadataJson);
+            
+            metadata = {
+              name: metadataJson.name || `NFT #${tokenId.toString()}`,
+              image: metadataJson.image || null,
+              description: metadataJson.description || null,
+              attributes: metadataJson.attributes || []
+            };
+            
+            // Handle IPFS image URLs
+            if (metadata.image && metadata.image.startsWith('ipfs://')) {
+              metadata.image = metadata.image.replace('ipfs://', 'https://ipfs.io/ipfs/');
+            }
+          } else {
+            console.log(`⚠️ Failed to fetch metadata from ${fetchUrl}: ${metadataResponse.status}`);
+          }
+        } catch (fetchError) {
+          console.log(`⚠️ Error fetching metadata from URI:`, fetchError);
+        }
       }
       
-      const rewardsData = await rewardsResponse.json();
-      
-      if (!rewardsData.success) {
-        throw new Error('Failed to fetch rewards configuration');
-      }
+      return metadata;
+    } catch (metadataError) {
+      console.log(`⚠️ Could not get tokenURI for token ${tokenId.toString()}:`, metadataError);
+      return {
+        name: `NFT #${tokenId.toString()}`,
+        image: null,
+        description: null,
+        attributes: []
+      };
+    }
+  };
 
-      const serverRewards = rewardsData.rewards;
+  const fetchOwnedNFTs = async (forceRefresh = false) => {
+    if (!account) return;
+    
+    const isManualRefresh = forceRefresh;
+    if (isManualRefresh) {
+      setRefreshingNfts(true);
+    } else {
+      setLoadingNfts(true);
+    }
+
+    try {
+      console.log('🔍 === NFT VERIFICATION DEBUG START ===');
+      console.log('👤 User wallet address:', account.address);
       
-      // Get unique collection addresses from server rewards
+      // Fetch burn rewards directly from Supabase
+      console.log('📋 Fetching rewards from Supabase...');
+      const serverRewards = await rewardsService.getBurnRewards();
+      console.log('📋 Server rewards found:', serverRewards);
+      console.log('📋 Number of rewards:', serverRewards.length);
+      
+      // Get unique collection addresses from rewards
       const collectionAddresses = [...new Set(serverRewards.map((reward: BurnReward) => reward.collectionAddress))];
+      console.log('🏪 Collection addresses to check:', collectionAddresses);
       
       let allNfts: any[] = [];
       
       // Fetch NFTs from each collection and verify current ownership
       for (const collectionAddress of collectionAddresses) {
+        console.log(`\n🔍 Checking collection: ${collectionAddress}`);
         try {
           const contract = getContract({
             client,
             chain: polygon,
             address: collectionAddress,
           });
+          console.log('📄 Contract created successfully');
 
-          const nfts = await getOwnedNFTs({
+          console.log(`👤 Fetching NFTs owned by ${account.address} from ${collectionAddress}...`);
+          
+          // Try Thirdweb's getOwnedNFTs first
+          let nfts = await getOwnedNFTs({
             contract,
             owner: account.address,
           });
+          console.log(`📊 Thirdweb getOwnedNFTs returned ${nfts.length} NFTs:`, nfts.map(n => ({ id: n.id?.toString(), name: n.metadata?.name })));
+          
+          // If Thirdweb returns 0 NFTs, try a manual approach
+          if (nfts.length === 0) {
+            console.log(`🔄 Thirdweb returned 0 NFTs, trying manual balance check...`);
+            try {
+              // Check if user has any balance in this collection
+              const balance = await readContract({
+                contract,
+                method: "function balanceOf(address owner) view returns (uint256)",
+                params: [account.address]
+              });
+              console.log(`📊 Manual balance check: ${balance.toString()} NFTs`);
+              
+              if (balance > 0) {
+                console.log(`🔍 User has ${balance.toString()} NFTs but Thirdweb didn't find them. This is a Thirdweb indexing issue.`);
+                console.log(`💡 Trying to get token by index...`);
+                
+                // Try multiple approaches to find the tokens
+                const manualNfts = [];
+                const balanceNum = Number(balance);
+                
+                // Method 1: Try tokenOfOwnerByIndex (ERC721Enumerable)
+                console.log(`🔍 Method 1: Trying tokenOfOwnerByIndex...`);
+                let foundWithIndex = false;
+                for (let i = 0; i < Math.min(balanceNum, 10); i++) {
+                  try {
+                    const tokenId = await readContract({
+                      contract,
+                      method: "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)",
+                      params: [account.address, BigInt(i)]
+                    });
+                    console.log(`📍 Found token at index ${i}: ${tokenId.toString()}`);
+                    foundWithIndex = true;
+                    
+                    const metadata = await fetchNFTMetadata(contract, tokenId);
+                    const manualNft = {
+                      id: tokenId,
+                      metadata: metadata
+                    };
+                    manualNfts.push(manualNft);
+                  } catch (indexError) {
+                    console.log(`❌ tokenOfOwnerByIndex failed at index ${i}:`, indexError.message);
+                    break;
+                  }
+                }
+                
+                // Method 2: If enumerable failed, try scanning recent token IDs
+                if (!foundWithIndex && manualNfts.length === 0) {
+                  console.log(`🔍 Method 2: Contract doesn't support enumerable, trying token ID scan...`);
+                  
+                  // Get total supply to know the range
+                  try {
+                    const totalSupply = await readContract({
+                      contract,
+                      method: "function totalSupply() view returns (uint256)",
+                      params: []
+                    });
+                    console.log(`📊 Total supply: ${totalSupply.toString()}`);
+                    
+                    // Scan backwards from total supply (most recent tokens)
+                    const maxScan = Math.min(Number(totalSupply), 100); // Don't scan more than 100
+                    let found = 0;
+                    
+                    for (let tokenId = Number(totalSupply) - 1; tokenId >= 0 && found < balanceNum; tokenId--) {
+                      try {
+                        const owner = await readContract({
+                          contract,
+                          method: "function ownerOf(uint256 tokenId) view returns (address)",
+                          params: [BigInt(tokenId)]
+                        });
+                        
+                        if (owner.toLowerCase() === account.address.toLowerCase()) {
+                          console.log(`📍 Found owned token: ${tokenId}`);
+                          const metadata = await fetchNFTMetadata(contract, BigInt(tokenId));
+                          const manualNft = {
+                            id: BigInt(tokenId),
+                            metadata: metadata
+                          };
+                          manualNfts.push(manualNft);
+                          found++;
+                        }
+                      } catch (ownerError) {
+                        // Token might not exist, continue scanning
+                        continue;
+                      }
+                      
+                      // Stop if we've scanned too many
+                      if (Number(totalSupply) - tokenId > maxScan) {
+                        console.log(`⚠️ Stopped scanning after ${maxScan} tokens to avoid timeout`);
+                        break;
+                      }
+                    }
+                  } catch (supplyError) {
+                    console.log(`❌ Could not get totalSupply:`, supplyError.message);
+                    
+                    // Method 3: Last resort - try common token ID ranges
+                    console.log(`🔍 Method 3: Trying common token ID ranges...`);
+                    const commonRanges = [
+                      [1, 50],     // 1-50
+                      [0, 50],     // 0-50  
+                      [1000, 1100], // 1000-1100
+                      [10000, 10100] // 10000-10100
+                    ];
+                    
+                    for (const [start, end] of commonRanges) {
+                      if (manualNfts.length >= balanceNum) break;
+                      
+                      console.log(`🔍 Scanning range ${start}-${end}...`);
+                      for (let tokenId = start; tokenId <= end && manualNfts.length < balanceNum; tokenId++) {
+                        try {
+                          const owner = await readContract({
+                            contract,
+                            method: "function ownerOf(uint256 tokenId) view returns (address)",
+                            params: [BigInt(tokenId)]
+                          });
+                          
+                          if (owner.toLowerCase() === account.address.toLowerCase()) {
+                            console.log(`📍 Found owned token in range: ${tokenId}`);
+                            const metadata = await fetchNFTMetadata(contract, BigInt(tokenId));
+                            const manualNft = {
+                              id: BigInt(tokenId),
+                              metadata: metadata
+                            };
+                            manualNfts.push(manualNft);
+                          }
+                        } catch (ownerError) {
+                          // Token doesn't exist, continue
+                          continue;
+                        }
+                      }
+                    }
+                  }
+                }
+                
+                if (manualNfts.length > 0) {
+                  console.log(`🎉 Manually found ${manualNfts.length} NFTs:`, manualNfts);
+                  nfts = manualNfts;
+                }
+              } else {
+                console.log(`✅ Manual balance check confirms 0 NFTs - user doesn't own any in this collection`);
+              }
+            } catch (balanceError) {
+              console.log(`❌ Manual balance check failed:`, balanceError);
+              console.log(`💡 This might be a non-standard NFT contract or network issue`);
+            }
+          }
+          
+          console.log(`✅ Final NFT count: ${nfts.length} NFTs in collection ${collectionAddress}:`, nfts.map(n => ({ id: n.id?.toString(), name: n.metadata?.name })));
 
           // Verify each NFT is still owned by the user (not cached data)
           const verifiedNfts = [];
           for (const nft of nfts) {
+            console.log(`🔍 Verifying ownership of NFT ${nft.id}...`);
             try {
               const currentOwner = await readContract({
                 contract,
                 method: "function ownerOf(uint256 tokenId) view returns (address)",
                 params: [BigInt(nft.id)]
               });
+              console.log(`👤 NFT ${nft.id} current owner: ${currentOwner}`);
+              console.log(`👤 User address: ${account.address}`);
+              console.log(`✅ Ownership match: ${currentOwner.toLowerCase() === account.address.toLowerCase()}`);
 
               // Only include NFTs that are actually still owned by the user
               if (currentOwner.toLowerCase() === account.address.toLowerCase()) {
@@ -113,47 +341,51 @@ export function BurnExchangeModal({
                   ...nft,
                   collectionAddress
                 });
+                console.log(`✅ NFT ${nft.id} verified and added to list`);
               } else {
                 console.log(`🔄 NFT ${nft.id} no longer owned by user (current owner: ${currentOwner})`);
               }
             } catch (ownerError) {
-              console.error(`Error verifying ownership of NFT ${nft.id}:`, ownerError);
+              console.error(`❌ Error verifying ownership of NFT ${nft.id}:`, ownerError);
               // Skip this NFT if we can't verify ownership
             }
           }
 
+          console.log(`✅ Verified ${verifiedNfts.length} NFTs from collection ${collectionAddress}`);
           allNfts = [...allNfts, ...verifiedNfts];
         } catch (error) {
-          console.error(`Error fetching NFTs from collection ${collectionAddress}:`, error);
+          console.error(`❌ Error fetching NFTs from collection ${collectionAddress}:`, error);
         }
       }
 
+      console.log(`\n📊 TOTAL VERIFIED NFTs: ${allNfts.length}`);
+      console.log('📊 All verified NFTs:', allNfts.map(n => ({ 
+        id: n.id?.toString(), 
+        collection: n.collectionAddress,
+        name: n.metadata?.name 
+      })));
       setOwnedNfts(allNfts);
 
-      // Check eligibility for each NFT with server
+      // Check eligibility for each NFT directly with Supabase
+      console.log('\n🎯 Checking eligibility for each NFT...');
       const eligibleNftsPromises = allNfts.map(async (nft) => {
+        console.log(`🔍 Checking eligibility for NFT ${nft.id} from collection ${nft.collectionAddress}...`);
         try {
-          // Convert BigInt values to strings for JSON serialization
-          const nftForServer = {
-            collectionAddress: nft.collectionAddress,
-            tokenId: nft.id?.toString() // Convert BigInt to string
-          };
+          const reward = await rewardsService.findRewardByCollection(
+            nft.collectionAddress,
+            nft.id?.toString()
+          );
+          console.log(`🎯 Reward found for NFT ${nft.id}:`, reward ? 'YES' : 'NO');
+          if (reward) {
+            console.log(`🎯 Reward details:`, reward);
+          }
           
-          
-          const response = await fetch('/api/exchange/check-eligibility', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(nftForServer)
-          });
-          
-          const data = await response.json();
-          
-          if (data.success && data.eligible) {
-            return { nft, reward: data.reward };
+          if (reward) {
+            return { nft, reward };
           }
           return null;
         } catch (error) {
-          console.error(`Error checking eligibility for NFT ${nft.id}:`, error);
+          console.error(`❌ Error checking eligibility for NFT ${nft.id}:`, error);
           return null;
         }
       });
@@ -161,11 +393,23 @@ export function BurnExchangeModal({
       const eligibleResults = await Promise.all(eligibleNftsPromises);
       const eligible = eligibleResults.filter(Boolean) as Array<{nft: any, reward: BurnReward}>;
       
+      console.log(`\n🎉 FINAL RESULTS:`);
+      console.log(`🎉 Total eligible NFTs: ${eligible.length}`);
+      console.log('🎉 Eligible NFTs:', eligible.map(e => ({ 
+        nftId: e.nft.id?.toString(), 
+        collection: e.nft.collectionAddress,
+        rewardAmount: e.reward.usdtAmount,
+        rewardType: e.reward.type
+      })));
+      
       setEligibleNfts(eligible);
+      setLastNftRefresh(new Date());
+      console.log('🔍 === NFT VERIFICATION DEBUG END ===\n');
     } catch (error) {
-      console.error('Error fetching owned NFTs:', error);
+      console.error('❌ Error fetching owned NFTs:', error);
     } finally {
       setLoadingNfts(false);
+      setRefreshingNfts(false);
     }
   };
 
@@ -180,25 +424,9 @@ export function BurnExchangeModal({
         return;
       }
 
-      // Get server wallet address
-      console.log('🔄 Fetching server wallet address...');
-      const serverWalletResponse = await fetch('/api/exchange/server-wallet');
-      
-      console.log('📡 Server wallet response status:', serverWalletResponse.status);
-      
-      if (!serverWalletResponse.ok) {
-        console.error('❌ Server wallet fetch failed:', serverWalletResponse.status, serverWalletResponse.statusText);
-        throw new Error(`Server not available: ${serverWalletResponse.status} ${serverWalletResponse.statusText}`);
-      }
-      
-      const serverWalletData = await serverWalletResponse.json();
-      console.log('📡 Server wallet data:', serverWalletData);
-      
-      if (!serverWalletData.success) {
-        throw new Error('Failed to get server wallet address');
-      }
-
-      const serverWalletAddress = serverWalletData.serverWalletAddress;
+      // Use hardcoded server wallet address (serverless approach)
+      const serverWalletAddress = SERVER_WALLET_ADDRESS;
+      console.log('📡 Using server wallet address:', serverWalletAddress);
 
       // Step 1: Verify NFT ownership before transfer
       const nftContract = getContract({
@@ -300,36 +528,19 @@ export function BurnExchangeModal({
         throw new Error(`Failed to verify NFT transfer: ${verifyError.message}`);
       }
 
-      // Step 2: Initiate server-side exchange
-      const exchangePayload = {
-        userAddress: account.address,
+      // Step 2: Log the exchange event directly to Supabase
+      console.log('📤 Logging exchange event to database...');
+      
+      await rewardsService.logExchange({
+        userWalletAddress: account.address,
         collectionAddress: nft.collectionAddress,
-        tokenId: nft.id.toString(), // Convert BigInt to string
-        userInfo: null // Will be set by UserInfoModal if needed
-      };
-      
-      console.log('📤 Sending exchange request:', exchangePayload);
-      
-      const exchangeResponse = await fetch('/api/exchange/initiate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(exchangePayload)
+        tokenId: nft.id.toString(),
+        reward: reward,
+        userInfo: null, // Will be set by UserInfoModal if needed
+        transferTransactionHash: transferResult?.transactionHash
       });
 
-      console.log('📡 Exchange response status:', exchangeResponse.status);
-      
-      if (!exchangeResponse.ok) {
-        const errorText = await exchangeResponse.text();
-        console.error('❌ Exchange API error:', errorText);
-        throw new Error(`Server error: ${exchangeResponse.status} - ${errorText}`);
-      }
-
-      const exchangeData = await exchangeResponse.json();
-      console.log('📡 Exchange response data:', exchangeData);
-
-      if (!exchangeData.success) {
-        throw new Error(exchangeData.error || 'Exchange failed');
-      }
+      console.log('✅ Exchange logged successfully');
 
       // Success message
       if (reward.type === 'usdt') {
@@ -355,16 +566,34 @@ export function BurnExchangeModal({
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 w-full max-w-4xl max-h-[80vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Flame className="text-orange-500" size={24} />
-            Exchange Your Eko
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
-          >
-            <X size={20} className="text-slate-400" />
-          </button>
+          <div className="flex items-center gap-4">
+            <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+              <Flame className="text-orange-500" size={24} />
+              Exchange Your Eko
+            </h2>
+            {lastNftRefresh && (
+              <div className="text-xs text-slate-400">
+                Updated: {lastNftRefresh.toLocaleTimeString()}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => fetchOwnedNFTs(true)}
+              disabled={refreshingNfts || loadingNfts}
+              className="flex items-center gap-1 px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-white rounded transition-all duration-200 disabled:opacity-50"
+              title="Refresh: Use if you recently bought/minted NFTs or expect more to appear"
+            >
+              <span className={`w-3 h-3 ${refreshingNfts ? 'animate-spin' : ''}`}>🔄</span>
+              {refreshingNfts ? 'Refreshing...' : 'Refresh'}
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+            >
+              <X size={20} className="text-slate-400" />
+            </button>
+          </div>
         </div>
 
         {!account ? (
@@ -373,7 +602,24 @@ export function BurnExchangeModal({
           </div>
         ) : (
           <div>
-            <p className="text-slate-400 mb-6">Here are your Ekos that are eligible for rewards:</p>
+            <p className="text-slate-400 mb-4">Here are your Ekos that are eligible for rewards:</p>
+            
+            {/* RPC Usage Notice */}
+            {!loadingNfts && !refreshingNfts && (
+              <div className="bg-blue-900/20 border border-blue-600/30 rounded-lg p-3 mb-4">
+                <div className="flex items-start gap-2">
+                  <span className="text-blue-400 text-sm">⚡</span>
+                  <div className="text-xs">
+                    <p className="text-blue-200 font-medium">NFT Detection Notice</p>
+                    <div className="text-blue-300/80 mt-1 space-y-1">
+                      <p>• Scans first 100-500 token IDs to optimize RPC usage</p>
+                      <p>• If your NFTs don't appear, use the "Refresh" button</p>
+                      <p>• Recently bought/minted NFTs may need manual refresh</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             
             {loadingNfts ? (
               <div className="text-center py-8">
@@ -513,18 +759,11 @@ export function UserInfoModal({
       return;
     }
 
-    // Handle server-side exchange with user info
+    // Handle serverless exchange with user info
     if (client && sendTransaction && selectedNft) {
       try {
-        // Get server wallet address
-        const serverWalletResponse = await fetch('/api/exchange/server-wallet');
-        const serverWalletData = await serverWalletResponse.json();
-        
-        if (!serverWalletData.success) {
-          throw new Error('Failed to get server wallet address');
-        }
-
-        const serverWalletAddress = serverWalletData.serverWalletAddress;
+        // Use hardcoded server wallet address (serverless approach)
+        const serverWalletAddress = SERVER_WALLET_ADDRESS;
 
         // Step 1: Transfer NFT to server wallet
         const nftContract = getContract({
@@ -554,23 +793,15 @@ export function UserInfoModal({
         
         console.log('Transfer transaction sent:', transferResult);
 
-        // Step 2: Initiate server-side exchange with user info
-        const exchangeResponse = await fetch('/api/exchange/initiate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userAddress: selectedNft.owner || selectedNft.userAddress,
-            collectionAddress: selectedNft.collectionAddress,
-            tokenId: selectedNft.id.toString(), // Convert BigInt to string
-            userInfo: userInfo
-          })
+        // Step 2: Log exchange event directly to Supabase with user info
+        await rewardsService.logExchange({
+          userWalletAddress: selectedNft.owner || selectedNft.userAddress,
+          collectionAddress: selectedNft.collectionAddress,
+          tokenId: selectedNft.id.toString(),
+          reward: reward,
+          userInfo: userInfo,
+          transferTransactionHash: transferResult?.transactionHash
         });
-
-        const exchangeData = await exchangeResponse.json();
-
-        if (!exchangeData.success) {
-          throw new Error(exchangeData.error || 'Exchange failed');
-        }
         
         alert(`Exchange successful! Your ${reward.customReward?.title} reward will be processed and sent to the provided contact information.`);
       } catch (error) {
@@ -712,6 +943,7 @@ export function AdminPanelModal({
     type: 'usdt'
   });
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showExchangeLogs, setShowExchangeLogs] = useState(false);
 
   const handleAddReward = async () => {
     if (!newReward.collectionAddress || !newReward.usdtAmount) {
@@ -728,21 +960,11 @@ export function AdminPanelModal({
         customReward: newReward.type === 'custom' ? newReward.customReward : undefined
       };
 
-      // Save to server
-      const response = await fetch('/api/admin/rewards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(reward)
-      });
+      // Save directly to Supabase
+      const savedReward = await rewardsService.addBurnReward(reward);
 
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to add reward');
-      }
-
-      // Update local state with the reward returned from server (includes ID)
-      onRewardsUpdate([...burnRewards, data.reward]);
+      // Update local state with the reward returned from Supabase (includes ID)
+      onRewardsUpdate([...burnRewards, savedReward]);
       setNewReward({ collectionAddress: '', tokenId: '', usdtAmount: 0, type: 'usdt' });
       setShowAddForm(false);
       
@@ -764,18 +986,10 @@ export function AdminPanelModal({
     }
 
     try {
-      // Delete from server
-      const response = await fetch(`/api/admin/rewards/${rewardToDelete.id}`, {
-        method: 'DELETE'
-      });
+      // Delete directly from Supabase
+      await rewardsService.deleteBurnReward(rewardToDelete.id);
 
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to delete reward');
-      }
-
-      // Update local state only after successful server deletion
+      // Update local state only after successful deletion
       const updatedRewards = burnRewards.filter((_, i) => i !== index);
       onRewardsUpdate(updatedRewards);
       
@@ -801,13 +1015,20 @@ export function AdminPanelModal({
           </button>
         </div>
 
-        <div className="mb-6">
+        <div className="mb-6 flex gap-3">
           <button
             onClick={() => setShowAddForm(true)}
             className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors"
           >
             <Plus size={16} />
             Add New Reward
+          </button>
+          <button
+            onClick={() => setShowExchangeLogs(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
+          >
+            <Flame size={16} />
+            View Exchange Logs
           </button>
         </div>
 
@@ -895,6 +1116,14 @@ export function AdminPanelModal({
           )}
         </div>
       </div>
+
+      {/* Exchange Logs Modal */}
+      {showExchangeLogs && (
+        <AdminExchangeLogsModal
+          isOpen={showExchangeLogs}
+          onClose={() => setShowExchangeLogs(false)}
+        />
+      )}
     </div>
   );
 }

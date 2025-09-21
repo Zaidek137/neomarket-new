@@ -1,3 +1,10 @@
+// ========================================
+// SERVER CODE - COMMENTED OUT FOR SERVERLESS APPROACH
+// ========================================
+// This server code has been preserved for future use if needed.
+// The application now uses direct Supabase connections from the frontend.
+
+/*
 // Load environment variables FIRST before any other imports
 import dotenv from 'dotenv';
 import path from 'path';
@@ -75,3 +82,7 @@ app.listen(PORT, () => {
 });
 
 export default app;
+*/
+
+console.log('🔄 Server code is commented out - using serverless approach with direct Supabase connections');
+console.log('📝 To re-enable server, uncomment the code above and run: npm run dev');

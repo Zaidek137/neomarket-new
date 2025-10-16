@@ -556,7 +556,7 @@ const NFTCard = React.memo(function NFTCard({ nft, viewMode, onClick, priority =
             />
           </div>
 
-          {/* NFT Info */}
+          {/* Eko Info */}
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-white truncate group-hover:text-cyan-300 transition-colors">
               {nft.name}

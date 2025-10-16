@@ -73,8 +73,8 @@ export default function SuccessStep({
           onClick={() => {
             if (navigator.share) {
               navigator.share({
-                title: 'I just bought an NFT!',
-                text: `Check out my new ${collectionName} NFT!`,
+                title: 'I just bought an Eko!',
+                text: `Check out my new ${collectionName} Eko!`,
                 url: window.location.href
               });
             }

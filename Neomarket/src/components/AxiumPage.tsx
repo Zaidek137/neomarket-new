@@ -73,7 +73,7 @@ export default function AxiumPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Access</span>
-                  <span className="text-white">Eko NFT Holders</span>
+                  <span className="text-white">Eko Holders</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Network</span>

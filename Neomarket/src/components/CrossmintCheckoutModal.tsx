@@ -66,7 +66,7 @@ export default function CrossmintCheckoutModal({ isOpen, onClose, collectionTitl
 
         {/* Content */}
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-          {/* NFT Preview */}
+          {/* Eko Preview */}
           <div className="text-center">
             <div className="w-32 h-32 sm:w-40 sm:h-40 mx-auto mb-3 sm:mb-4 rounded-xl overflow-hidden bg-gray-800 border border-gray-600">
               <img

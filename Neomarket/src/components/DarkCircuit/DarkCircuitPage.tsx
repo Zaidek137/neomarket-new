@@ -571,7 +571,7 @@ export default function DarkCircuitPage() {
                                             </div>
                                         </div>
                                         
-                                        {/* NFT Info Bar - Compact */}
+                                        {/* Eko Info Bar - Compact */}
                                         <div className="p-4 bg-gradient-to-r from-black/50 to-gray-900/50 backdrop-blur-xl">
                                             <div className="flex items-center justify-between">
                                                 <div>
@@ -590,7 +590,7 @@ export default function DarkCircuitPage() {
                                 </motion.div>
                             </div>
 
-                            {/* NFT Info & Actions - Compact */}
+                            {/* Eko Info & Actions - Compact */}
                             <div className="space-y-6">
                                 <div>
                                     <motion.h2 
@@ -818,7 +818,7 @@ export default function DarkCircuitPage() {
                                     >
                                         <option value="">Select your preference</option>
                                         <option value="crypto">Cryptocurrency</option>
-                                        <option value="nft">NFT/Digital Art</option>
+                                        <option value="nft">Eko/Digital Art</option>
                                         <option value="merchandise">Physical Merchandise</option>
                                         <option value="experience">Digital Experience</option>
                                         <option value="surprise">Surprise Me!</option>

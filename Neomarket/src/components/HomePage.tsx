@@ -44,7 +44,7 @@ export default function HomePage() {
               to="/explore"
               className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 flex items-center justify-center space-x-2"
             >
-              <span>Explore NFTs</span>
+              <span>Explore Ekos</span>
               <ArrowRightIcon className="w-5 h-5" />
             </Link>
             <Link
@@ -73,7 +73,7 @@ export default function HomePage() {
                 </div>
                 <div className="p-6">
                   <h3 className="text-xl font-semibold mb-2">Collection {item}</h3>
-                  <p className="text-slate-400 mb-4">Amazing digital art collection featuring unique NFTs.</p>
+                  <p className="text-slate-400 mb-4">Amazing digital art collection featuring unique Ekos.</p>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-300">Floor: 0.5 ETH</span>
                     <Link
@@ -97,7 +97,7 @@ export default function HomePage() {
             <div className="flex flex-col items-center">
               <FireIcon className="w-12 h-12 text-orange-400 mb-4" />
               <h3 className="text-3xl font-bold mb-2">1M+</h3>
-              <p className="text-slate-400">NFTs Sold</p>
+              <p className="text-slate-400">Ekos Sold</p>
             </div>
             <div className="flex flex-col items-center">
               <ChartBarIcon className="w-12 h-12 text-green-400 mb-4" />

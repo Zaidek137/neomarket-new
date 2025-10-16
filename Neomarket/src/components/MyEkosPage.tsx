@@ -630,7 +630,7 @@ export default function MyEkosPage() {
               onClick={() => fetchOwnedEkos(true)}
               disabled={refreshing}
               className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-white rounded-lg font-medium transition-all duration-200 disabled:opacity-50"
-              title="Refresh: Use if you recently bought/minted NFTs or expect more to appear"
+              title="Refresh: Use if you recently bought/minted Ekos or expect more to appear"
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
               {refreshing ? 'Refreshing...' : 'Refresh'}
@@ -670,7 +670,7 @@ export default function MyEkosPage() {
                 <div className="text-sm">
                   <p className="text-green-200 font-medium">NOTICE:</p>
                   <div className="text-green-300/80 mt-1 space-y-1">
-                    <p>• <strong>Use "Refresh"</strong> only if you recently bought/minted NFTs or expect more to appear.</p>
+                    <p>• <strong>Use "Refresh"</strong> only if you recently bought/minted Ekos or expect more to appear.</p>
                     {lastFullScan && (
                       <p className="text-green-400 text-xs mt-2">
                         Last fresh scan: {lastFullScan.toLocaleString()}

@@ -582,7 +582,7 @@ export function BurnExchangeModal({
               onClick={() => fetchOwnedNFTs(true)}
               disabled={refreshingNfts || loadingNfts}
               className="flex items-center gap-1 px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-white rounded transition-all duration-200 disabled:opacity-50"
-              title="Refresh: Use if you recently bought/minted NFTs or expect more to appear"
+              title="Refresh: Use if you recently bought/minted Ekos or expect more to appear"
             >
               <span className={`w-3 h-3 ${refreshingNfts ? 'animate-spin' : ''}`}>🔄</span>
               {refreshingNfts ? 'Refreshing...' : 'Refresh'}
@@ -610,11 +610,11 @@ export function BurnExchangeModal({
                 <div className="flex items-start gap-2">
                   <span className="text-blue-400 text-sm">⚡</span>
                   <div className="text-xs">
-                    <p className="text-blue-200 font-medium">NFT Detection Notice</p>
+                    <p className="text-blue-200 font-medium">Eko Detection Notice</p>
                     <div className="text-blue-300/80 mt-1 space-y-1">
                       <p>• Scans first 100-500 token IDs to optimize RPC usage</p>
-                      <p>• If your NFTs don't appear, use the "Refresh" button</p>
-                      <p>• Recently bought/minted NFTs may need manual refresh</p>
+                      <p>• If your Ekos don't appear, use the "Refresh" button</p>
+                      <p>• Recently bought/minted Ekos may need manual refresh</p>
                     </div>
                   </div>
                 </div>

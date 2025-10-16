@@ -18,7 +18,7 @@ export default function AssetPage() {
           {/* NFT Details */}
           <div className="space-y-6">
             <div>
-              <h1 className="text-3xl font-bold mb-2">NFT #{tokenId}</h1>
+              <h1 className="text-3xl font-bold mb-2">Eko #{tokenId}</h1>
               <p className="text-slate-400">From Collection</p>
             </div>
 

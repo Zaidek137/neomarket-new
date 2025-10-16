@@ -330,7 +330,7 @@ export default function ExchangePage() {
           </div>
           
           <p className="text-white/80 mb-6">
-            Exchange your eligible Ekos for USDT or other exclusive rewards. Transfer your NFT to our secure server wallet, and receive your reward instantly.
+            Exchange your eligible Ekos for USDT or other exclusive rewards. Transfer your Eko to our secure server wallet, and receive your reward instantly.
           </p>
 
                   <div className="flex flex-wrap gap-4">
@@ -1151,7 +1151,7 @@ function ListEkoModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
                 onClick={fetchOwnedNFTs}
                 disabled={loadingNfts}
                 className="flex items-center gap-2 px-3 py-1 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-white rounded text-sm transition-all duration-200 disabled:opacity-50"
-                title="Refresh: Use if you recently bought/minted NFTs or expect more to appear"
+                title="Refresh: Use if you recently bought/minted Ekos or expect more to appear"
               >
                 <span className={`text-xs ${loadingNfts ? 'animate-spin' : ''}`}>🔄</span>
                 {loadingNfts ? 'Refreshing...' : (cacheLoaded ? 'Refresh' : 'Load NFTs')}
@@ -1160,9 +1160,9 @@ function ListEkoModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
             
             {ownedNfts.length === 0 && !loadingNfts ? (
               <div className="text-center py-8">
-                <p className="text-slate-400 mb-2">{cacheLoaded ? 'No NFTs in cache' : 'No NFTs loaded'}</p>
+                <p className="text-slate-400 mb-2">{cacheLoaded ? 'No Ekos in cache' : 'No Ekos loaded'}</p>
                 <p className="text-slate-500 text-sm">
-                  {cacheLoaded ? 'Click "Refresh" if you recently acquired NFTs' : 'Click "Load NFTs" to scan your collection'}
+                  {cacheLoaded ? 'Click "Refresh" if you recently acquired Ekos' : 'Click "Load Ekos" to scan your collection'}
                 </p>
               </div>
             ) : loadingNfts ? (

@@ -155,7 +155,7 @@ export default function NFTGrid({ nfts, loading, onLoadMore }: NFTGridProps) {
         <>
           {/* Grid - More compact with mobile optimization */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
-            {/* NFT Cards */}
+            {/* Eko Cards */}
             {nfts.map((nft) => (
               <NFTCard key={nft.id} nft={nft} />
             ))}

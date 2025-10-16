@@ -202,7 +202,7 @@ export default function NexusPage() {
             <AlertCircle className="text-yellow-400 mx-auto" size={48} />
             <h3 className="text-xl font-bold text-white">Eko Required</h3>
             <p className="text-slate-400">
-              You need to own at least one Eko NFT to participate in voting.
+              You need to own at least one Eko to participate in voting.
             </p>
             {needsManualCheck && (
               <button

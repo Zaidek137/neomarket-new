@@ -253,7 +253,7 @@ export default function ProposalDetailModal({
               
               {proposal.status === 'active' && !ekoLoading && !ownsEko && (
                 <div className="bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 px-4 py-3 rounded-lg text-center text-sm">
-                  🔒 Hold an Eko NFT to participate in voting
+                  🔒 Hold an Eko to participate in voting
                 </div>
               )}
               

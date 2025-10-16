@@ -10,8 +10,9 @@ export default function TopHeader() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchValue, setSearchValue] = useState('');
 
-  // Configure external wallets
+  // Configure all wallet options including social logins, email, phone, and external wallets
   const wallets = [
+    createWallet("inApp"), // Enables email, phone, and social logins
     createWallet("io.metamask"),
     createWallet("com.coinbase.wallet"),
     createWallet("me.rainbow"),
@@ -106,8 +107,8 @@ export default function TopHeader() {
                   size: "compact",
                   showThirdwebBranding: false,
                   welcomeScreen: {
-                    title: "Connect your wallet",
-                    subtitle: "Select an external wallet to continue",
+                    title: "Connect to NeoMarket",
+                    subtitle: "Sign in with email, phone, social accounts, or connect your wallet",
                   }
                 }}
                 connectButton={{

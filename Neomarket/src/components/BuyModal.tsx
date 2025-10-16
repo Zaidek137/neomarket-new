@@ -139,6 +139,7 @@ const BuyModal: React.FC<BuyModalProps> = ({ listing, metadata, onClose, client,
       case 'connect':
         // Configure external wallets only
         const wallets = [
+          createWallet("inApp"), // Enables email, phone, and social logins
           createWallet("io.metamask"),
           createWallet("com.coinbase.wallet"),
           createWallet("me.rainbow"),
@@ -151,7 +152,7 @@ const BuyModal: React.FC<BuyModalProps> = ({ listing, metadata, onClose, client,
         
         return (
           <div className="text-center p-8">
-            <h3 className="text-lg font-semibold text-white mb-4">Please connect your wallet</h3>
+            <h3 className="text-lg font-semibold text-white mb-4">Connect to continue</h3>
             <ConnectButton 
               client={client} 
               wallets={wallets}
@@ -160,8 +161,8 @@ const BuyModal: React.FC<BuyModalProps> = ({ listing, metadata, onClose, client,
                 size: "compact",
                 showThirdwebBranding: false,
                 welcomeScreen: {
-                  title: "Connect your wallet",
-                  subtitle: "Select an external wallet to continue",
+                  title: "Connect to NeoMarket",
+                  subtitle: "Sign in with email, phone, social accounts, or connect your wallet",
                 }
               }}
             />

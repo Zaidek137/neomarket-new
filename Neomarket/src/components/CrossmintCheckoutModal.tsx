@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { useActiveAccount, ConnectButton } from 'thirdweb/react';
 import { CrossmintProvider, CrossmintHostedCheckout } from "@crossmint/client-sdk-react-ui";
 import { createThirdwebClient } from 'thirdweb';
+import { createWallet } from 'thirdweb/wallets';
 import { polygon } from 'thirdweb/chains';
 
 const client = createThirdwebClient({
@@ -138,17 +139,27 @@ export default function CrossmintCheckoutModal({ isOpen, onClose, collectionTitl
                   <ConnectButton
                     client={client}
                     chain={polygon}
+                    wallets={[
+                      createWallet("inApp"),
+                      createWallet("io.metamask"),
+                      createWallet("com.coinbase.wallet"),
+                      createWallet("walletConnect"),
+                    ]}
                     appMetadata={{
                       name: "NeoMarket",
                       url: "https://neomarket.scavenjer.com"
                     }}
                     connectModal={{
                       size: "wide",
-                      titleIcon: "https://zrolrdnymkkdcyksuctq.supabase.co/storage/v1/object/public/Gallery/Homepage%20Images/Neomarket%20Log.png"
+                      titleIcon: "https://zrolrdnymkkdcyksuctq.supabase.co/storage/v1/object/public/Gallery/Homepage%20Images/Neomarket%20Log.png",
+                      welcomeScreen: {
+                        title: "Connect to NeoMarket",
+                        subtitle: "Sign in with email, phone, social accounts, or connect your wallet"
+                      }
                     }}
                     theme="dark"
                     connectButton={{
-                      label: "Connect Wallet to Purchase",
+                      label: "Connect to Purchase",
                       className: "!w-full !bg-gradient-to-r !from-[#2DD4BF] !to-[#EC4899] !text-white !py-3 !px-6 !rounded-lg !font-semibold hover:!from-[#2DD4BF]/90 hover:!to-[#EC4899]/90 !transition-all !duration-300"
                     }}
                   />

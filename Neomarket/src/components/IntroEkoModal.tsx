@@ -4,6 +4,7 @@ import { X, Users, Trophy, Vote, Zap, Eye, Plus, Minus } from 'lucide-react';
 import { useActiveAccount, ConnectButton } from 'thirdweb/react';
 import { CrossmintProvider, CrossmintHostedCheckout } from "@crossmint/client-sdk-react-ui";
 import { createThirdwebClient } from 'thirdweb';
+import { createWallet } from 'thirdweb/wallets';
 import { polygon } from 'thirdweb/chains';
 import { useNavigate } from 'react-router-dom';
 
@@ -239,17 +240,27 @@ export default function IntroEkoModal({ isOpen, onClose }: IntroEkoModalProps) {
                         <ConnectButton
                           client={client}
                           chain={polygon}
+                          wallets={[
+                            createWallet("inApp"),
+                            createWallet("io.metamask"),
+                            createWallet("com.coinbase.wallet"),
+                            createWallet("walletConnect"),
+                          ]}
                           appMetadata={{
                             name: "NeoMarket",
                             url: "https://neomarket.scavenjer.com"
                           }}
                           connectModal={{
                             size: "wide",
-                            titleIcon: "https://zrolrdnymkkdcyksuctq.supabase.co/storage/v1/object/public/Gallery/Homepage%20Images/Neomarket%20Log.png"
+                            titleIcon: "https://zrolrdnymkkdcyksuctq.supabase.co/storage/v1/object/public/Gallery/Homepage%20Images/Neomarket%20Log.png",
+                            welcomeScreen: {
+                              title: "Connect to NeoMarket",
+                              subtitle: "Sign in with email, phone, social accounts, or connect your wallet"
+                            }
                           }}
                           theme="dark"
                           connectButton={{
-                            label: "Connect Wallet to Purchase",
+                            label: "Connect to Purchase",
                             className: "!w-full !bg-gradient-to-r !from-yellow-500 !to-yellow-600 hover:!from-yellow-600 hover:!to-yellow-700 !text-black !py-3 !px-6 !rounded-lg !font-bold !transition-all !duration-200"
                           }}
                         />

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { discordWebhook } from './discordWebhook';
 
 // Initialize Supabase client
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -95,6 +96,19 @@ export const votingService = {
     // Log the proposal creation
     await this.logAction(data.id, proposal.created_by, 'created_proposal', { title: proposal.title });
 
+    // Send Discord notification (non-blocking)
+    try {
+      await discordWebhook.sendProposalCreatedNotification(
+        proposal.title,
+        proposal.description,
+        proposal.category,
+        proposal.created_by,
+        proposal.image_url || undefined
+      );
+    } catch (webhookError) {
+      console.error('Discord webhook notification failed:', webhookError);
+    }
+
     return data as Proposal;
   },
 
@@ -130,6 +144,28 @@ export const votingService = {
       .single();
     
     if (error) throw error;
+
+    // Send Discord notification (non-blocking)
+    try {
+      const proposal = await this.getProposal(proposalId);
+      
+      await discordWebhook.sendVoteNotification({
+        proposalId: proposal.id,
+        proposalTitle: proposal.title,
+        proposalDescription: proposal.description,
+        proposalCategory: proposal.category,
+        proposalImageUrl: proposal.image_url || undefined,
+        voterAddress: walletAddress,
+        voteType: voteType,
+        votesFor: proposal.votes_for + (voteType === 'for' ? 1 : 0),
+        votesAgainst: proposal.votes_against + (voteType === 'against' ? 1 : 0),
+        votesRequired: proposal.votes_required
+      });
+    } catch (webhookError) {
+      // Don't fail the vote if webhook fails
+      console.error('Discord webhook notification failed:', webhookError);
+    }
+
     return data as Vote;
   },
 

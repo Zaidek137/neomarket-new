@@ -208,7 +208,7 @@ export default function ProposalDetailModal({
 
             {/* Footer with Voting */}
             <div className="border-t border-slate-700/50 p-4">
-              {proposal.status === 'active' && ownsEko && (
+              {proposal.status === 'active' && account && (
                 <div className="space-y-3">
                   {userVotes[proposal.id] ? (
                     <div className={`px-4 py-3 rounded-lg text-center text-sm font-medium border ${
@@ -251,9 +251,9 @@ export default function ProposalDetailModal({
                 </div>
               )}
               
-              {proposal.status === 'active' && !ekoLoading && !ownsEko && (
+              {proposal.status === 'active' && !account && (
                 <div className="bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 px-4 py-3 rounded-lg text-center text-sm">
-                  🔒 Hold an Eko to participate in voting
+                  🔒 Connect wallet to vote
                 </div>
               )}
               

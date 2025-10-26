@@ -10,7 +10,7 @@ import ProposalDetailModal from './ProposalDetailModal';
 
 export default function NexusPage() {
   const account = useActiveAccount();
-  const { ownsEko, loading: ekoLoading, needsManualCheck, checkOwnership } = useEkoOwnership();
+  const { ownsEko, needsManualCheck, checkOwnership } = useEkoOwnership();
   const isAdmin = isAdminWallet(account?.address);
   
   const [selectedTab, setSelectedTab] = useState<'active' | 'history'>('active');
@@ -75,11 +75,28 @@ export default function NexusPage() {
   };
 
   const handleVote = async (proposalId: string, voteType: VoteType) => {
-    if (!account?.address || !ownsEko) return;
+    if (!account?.address) {
+      alert('Please connect your wallet to vote');
+      return;
+    }
 
     try {
       setVoting(proposalId);
       
+      // Check Eko ownership on-demand when voting
+      console.log('🔍 Checking Eko ownership before voting...');
+      if (needsManualCheck) {
+        await checkOwnership();
+      }
+      
+      // Verify ownership after check
+      if (!ownsEko) {
+        alert('You need to own at least one Eko to vote. Please acquire an Eko and try again.');
+        setVoting(null);
+        return;
+      }
+      
+      console.log('✅ Eko ownership verified, submitting vote...');
       await votingService.submitVote(proposalId, account.address, voteType);
       
       // Update local state
@@ -185,47 +202,8 @@ export default function NexusPage() {
         )}
       </div>
 
-      {/* Wallet Connection Check */}
-      {!account ? (
-        <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-xl p-6 text-center">
-          <div className="space-y-3">
-            <Vote className="text-yellow-400 mx-auto" size={48} />
-            <h3 className="text-xl font-bold text-white">Connect Your Wallet</h3>
-            <p className="text-slate-400">
-              You need to connect your wallet to participate in voting.
-            </p>
-          </div>
-        </div>
-      ) : !ekoLoading && !ownsEko ? (
-        <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-xl p-6 text-center">
-          <div className="space-y-4">
-            <AlertCircle className="text-yellow-400 mx-auto" size={48} />
-            <h3 className="text-xl font-bold text-white">Eko Required</h3>
-            <p className="text-slate-400">
-              You need to own at least one Eko to participate in voting.
-            </p>
-            {needsManualCheck && (
-              <button
-                onClick={checkOwnership}
-                disabled={ekoLoading}
-                className="mx-auto flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-all duration-200"
-              >
-                {ekoLoading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Checking...
-                  </>
-                ) : (
-                  <>
-                    <Vote size={16} />
-                    Check Eko Ownership
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-        </div>
-      ) : (
+      {/* Category Filters */}
+      {account && (
         <>
           {/* Category Filters */}
           <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -436,7 +414,7 @@ export default function NexusPage() {
                     
                     {/* Voting Actions */}
                     <div className="mt-auto">
-                      {proposal.status === 'active' && ownsEko && (
+                      {proposal.status === 'active' && account && (
                         <div className="space-y-3">
                           {userVotes[proposal.id] ? (
                             <div className={`px-4 py-3 rounded-lg text-center text-sm font-medium border ${
@@ -483,10 +461,10 @@ export default function NexusPage() {
                         </div>
                       )}
                       
-                      {/* Non-Eko holder message */}
-                      {proposal.status === 'active' && !ekoLoading && !ownsEko && (
+                      {/* Wallet not connected */}
+                      {proposal.status === 'active' && !account && (
                         <div className="bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 px-3 py-2 rounded-lg text-center text-xs">
-                          🔒 Hold Eko to vote
+                          🔒 Connect wallet to vote
                         </div>
                       )}
                       
@@ -503,6 +481,19 @@ export default function NexusPage() {
             </div>
           )}
         </>
+      )}
+      
+      {/* Wallet Connection Notice */}
+      {!account && (
+        <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-xl p-6 text-center">
+          <div className="space-y-3">
+            <Vote className="text-yellow-400 mx-auto" size={48} />
+            <h3 className="text-xl font-bold text-white">Connect Your Wallet</h3>
+            <p className="text-slate-400">
+              Connect your wallet to view proposals and participate in voting.
+            </p>
+          </div>
+        </div>
       )}
 
       {/* Create Proposal Modal */}

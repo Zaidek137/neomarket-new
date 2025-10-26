@@ -102,7 +102,7 @@ export const votingService = {
         proposal.title,
         proposal.description,
         proposal.category,
-        proposal.created_by,
+        proposal.end_date,
         proposal.image_url || undefined
       );
     } catch (webhookError) {
@@ -159,7 +159,8 @@ export const votingService = {
         voteType: voteType,
         votesFor: proposal.votes_for + (voteType === 'for' ? 1 : 0),
         votesAgainst: proposal.votes_against + (voteType === 'against' ? 1 : 0),
-        votesRequired: proposal.votes_required
+        votesRequired: proposal.votes_required,
+        endDate: proposal.end_date
       });
     } catch (webhookError) {
       // Don't fail the vote if webhook fails

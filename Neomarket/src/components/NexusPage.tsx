@@ -10,7 +10,7 @@ import ProposalDetailModal from './ProposalDetailModal';
 
 export default function NexusPage() {
   const account = useActiveAccount();
-  const { ownsEko, needsManualCheck, checkOwnership } = useEkoOwnership();
+  const { ownsEko, checkOwnership } = useEkoOwnership();
   const isAdmin = isAdminWallet(account?.address);
   
   const [selectedTab, setSelectedTab] = useState<'active' | 'history'>('active');
@@ -85,12 +85,29 @@ export default function NexusPage() {
       
       // Check Eko ownership on-demand when voting
       console.log('🔍 Checking Eko ownership before voting...');
-      if (needsManualCheck) {
-        await checkOwnership();
+      await checkOwnership();
+      
+      // Small delay to ensure state is updated
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Re-check ownership status after the check completes
+      // We need to check localStorage since state might not update immediately
+      const ownershipCacheKey = `eko_ownership_result_${account.address.toLowerCase()}`;
+      const cachedResult = localStorage.getItem(ownershipCacheKey);
+      let hasEko = ownsEko;
+      
+      if (cachedResult) {
+        try {
+          const { ownsEko: cachedOwnsEko } = JSON.parse(cachedResult);
+          hasEko = cachedOwnsEko;
+          console.log(`📦 Using cached ownership result: ${hasEko ? 'OWNS' : 'DOES NOT OWN'} Eko`);
+        } catch (error) {
+          console.warn('⚠️ Error reading cached ownership:', error);
+        }
       }
       
       // Verify ownership after check
-      if (!ownsEko) {
+      if (!hasEko) {
         alert('You need to own at least one Eko to vote. Please acquire an Eko and try again.');
         setVoting(null);
         return;

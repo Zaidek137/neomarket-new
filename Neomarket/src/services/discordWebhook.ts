@@ -38,6 +38,7 @@ export interface VoteNotificationData {
   votesFor: number;
   votesAgainst: number;
   votesRequired: number;
+  endDate: string;
 }
 
 class DiscordWebhookService {
@@ -65,7 +66,7 @@ class DiscordWebhookService {
       const embed = this.createVoteEmbed(data);
       const payload: DiscordWebhookPayload = {
         username: 'Nexus Voting Bot',
-        avatar_url: 'https://i.imgur.com/AfFp7pu.png', // Optional: Replace with your bot avatar
+        avatar_url: 'https://scavenjer.io/scavenjer-logo.png', // Scavenjer logo
         embeds: [embed]
       };
 
@@ -101,11 +102,11 @@ class DiscordWebhookService {
       proposalDescription,
       proposalCategory,
       proposalImageUrl,
-      voterAddress,
       voteType,
       votesFor,
       votesAgainst,
-      votesRequired
+      votesRequired,
+      endDate
     } = data;
 
     // Color based on vote type (green for 'for', red for 'against')
@@ -114,11 +115,33 @@ class DiscordWebhookService {
     // Calculate progress percentage
     const progress = Math.min((votesFor / votesRequired) * 100, 100).toFixed(1);
 
-    // Format voter address (show first 6 and last 4 characters)
-    const formattedAddress = `${voterAddress.slice(0, 6)}...${voterAddress.slice(-4)}`;
-
     // Create progress bar
     const progressBar = this.createProgressBar(votesFor, votesRequired);
+
+    // Format end date
+    const endDateObj = new Date(endDate);
+    const formattedEndDate = endDateObj.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    // Calculate time remaining
+    const now = new Date();
+    const timeRemaining = endDateObj.getTime() - now.getTime();
+    const daysRemaining = Math.floor(timeRemaining / (1000 * 60 * 60 * 24));
+    const hoursRemaining = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    
+    let timeRemainingText = '';
+    if (daysRemaining > 0) {
+      timeRemainingText = `${daysRemaining}d ${hoursRemaining}h remaining`;
+    } else if (hoursRemaining > 0) {
+      timeRemainingText = `${hoursRemaining}h remaining`;
+    } else {
+      timeRemainingText = 'Less than 1h remaining';
+    }
 
     const embed: DiscordEmbed = {
       title: `🗳️ New Vote Cast!`,
@@ -131,13 +154,13 @@ class DiscordWebhookService {
           inline: true
         },
         {
-          name: '👤 Voter',
-          value: `\`${formattedAddress}\``,
+          name: '🏷️ Category',
+          value: proposalCategory.replace('_', ' ').toUpperCase(),
           inline: true
         },
         {
-          name: '🏷️ Category',
-          value: proposalCategory.replace('_', ' ').toUpperCase(),
+          name: '⏰ Expires',
+          value: `${formattedEndDate}\n*${timeRemainingText}*`,
           inline: true
         },
         {
@@ -181,7 +204,7 @@ class DiscordWebhookService {
     proposalTitle: string,
     proposalDescription: string,
     proposalCategory: string,
-    creatorAddress: string,
+    endDate: string,
     proposalImageUrl?: string
   ): Promise<boolean> {
     if (!this.webhookUrl) {
@@ -190,7 +213,30 @@ class DiscordWebhookService {
     }
 
     try {
-      const formattedAddress = `${creatorAddress.slice(0, 6)}...${creatorAddress.slice(-4)}`;
+      // Format end date
+      const endDateObj = new Date(endDate);
+      const formattedEndDate = endDateObj.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      // Calculate time remaining
+      const now = new Date();
+      const timeRemaining = endDateObj.getTime() - now.getTime();
+      const daysRemaining = Math.floor(timeRemaining / (1000 * 60 * 60 * 24));
+      const hoursRemaining = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      
+      let timeRemainingText = '';
+      if (daysRemaining > 0) {
+        timeRemainingText = `${daysRemaining}d ${hoursRemaining}h to vote`;
+      } else if (hoursRemaining > 0) {
+        timeRemainingText = `${hoursRemaining}h to vote`;
+      } else {
+        timeRemainingText = 'Less than 1h to vote';
+      }
       
       const embed: DiscordEmbed = {
         title: '📢 New Proposal Created!',
@@ -198,13 +244,13 @@ class DiscordWebhookService {
         color: 0x8B5CF6, // Purple
         fields: [
           {
-            name: '👤 Created By',
-            value: `\`${formattedAddress}\``,
+            name: '🏷️ Category',
+            value: proposalCategory.replace('_', ' ').toUpperCase(),
             inline: true
           },
           {
-            name: '🏷️ Category',
-            value: proposalCategory.replace('_', ' ').toUpperCase(),
+            name: '⏰ Voting Ends',
+            value: `${formattedEndDate}\n*${timeRemainingText}*`,
             inline: true
           }
         ],
@@ -220,7 +266,7 @@ class DiscordWebhookService {
 
       const payload: DiscordWebhookPayload = {
         username: 'Nexus Voting Bot',
-        avatar_url: 'https://i.imgur.com/AfFp7pu.png',
+        avatar_url: 'https://scavenjer.io/scavenjer-logo.png',
         embeds: [embed]
       };
 

@@ -117,7 +117,7 @@ export default function Footer({ onPageChange }: FooterProps) {
             <ul className="space-y-3">
               <li>
                 <a 
-                  href="https://app.marblever.se/i/37KypfA"
+                  href="https://app.marblever.se/i/3MU6Wfa"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="footer-link flex items-center gap-2"
@@ -161,7 +161,7 @@ export default function Footer({ onPageChange }: FooterProps) {
                 Contact
               </a>
               <a
-                href="https://app.marblever.se/i/37KypfA"
+                href="https://app.marblever.se/i/3MU6Wfa"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-gray-400 hover:text-[#2DD4BF] transition-colors text-sm flex items-center gap-2"

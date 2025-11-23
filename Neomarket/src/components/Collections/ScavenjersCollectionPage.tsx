@@ -1063,34 +1063,42 @@ export default function ScavenjersCollectionPage() {
       <div className="flex-shrink-0">
         <div className="px-4 lg:px-6 xl:px-8 py-6">
           {/* Collection Info - Compact */}
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0">
+          <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg sm:rounded-xl overflow-hidden flex-shrink-0">
               <img
                 src={collectionInfo.image}
                 alt={collectionInfo.name}
                 className="w-full h-full object-cover"
               />
             </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold text-white">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-xl sm:text-2xl font-bold text-white">
                   {collectionInfo.name}
                 </h1>
                 {collectionInfo.verified && (
-                  <Badge size={20} className="text-cyan-400" />
+                  <Badge size={16} className="text-cyan-400 sm:w-5 sm:h-5" />
                 )}
+              </div>
+              <div className="flex items-center gap-1.5 sm:gap-2 mt-1 sm:mt-2">
+                <img 
+                  src="https://ifps.scavenjer.com/ipfs/bafkreif42agmn7wpyvvg2363payc75ek6nuanwezswjpzjgabuhaaggofy" 
+                  alt="Akibaza Studio"
+                  className="w-4 h-4 sm:w-5 sm:h-5 rounded object-cover flex-shrink-0"
+                />
+                <span className="text-xs sm:text-sm text-slate-400 truncate">Design by <span className="text-slate-300 font-medium">Akibaza Studio</span></span>
               </div>
             </div>
           </div>
 
           {/* Navigation Tabs */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
             {(['explore', 'exchange', 'holders', 'about'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={cn(
-                  "px-6 py-3 text-sm font-medium rounded-lg transition-all duration-300 capitalize",
+                  "px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-medium rounded-lg transition-all duration-300 capitalize whitespace-nowrap",
                   activeTab === tab
                     ? "bg-slate-700/50 text-white"
                     : "text-slate-400 hover:text-white hover:bg-slate-800/30"
@@ -1099,6 +1107,64 @@ export default function ScavenjersCollectionPage() {
                 {tab === 'exchange' ? 'The Exchange' : tab}
               </button>
             ))}
+          </div>
+
+          {/* Compact Purchase Section - Integrated into Header */}
+          <div className="mt-4 p-3 sm:p-4 bg-gradient-to-r from-slate-800/30 to-slate-700/30 backdrop-blur-sm border border-slate-600/30 rounded-lg">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
+              {/* Left: Title & Price */}
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="hidden sm:block w-8 h-8 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-lg flex-shrink-0 flex items-center justify-center">
+                  <ShoppingCart size={18} className="text-black" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-white">Get Your Random Eko</h3>
+                  <p className="text-xs sm:text-sm text-slate-400">~$19 USD each • Max 10 per transaction</p>
+                </div>
+              </div>
+
+              {/* Right: Quantity & Buy */}
+              <div className="flex items-center gap-2 sm:gap-3">
+                {/* Quantity Selector - Compact */}
+                <div className="flex items-center gap-2 bg-slate-900/50 rounded-lg px-2 py-1.5">
+                  <button
+                    onClick={decrementQuantity}
+                    disabled={purchaseQuantity <= 1}
+                    className={cn(
+                      "p-1 rounded transition-all duration-200",
+                      purchaseQuantity <= 1
+                        ? "text-slate-600 cursor-not-allowed"
+                        : "text-slate-300 hover:text-white hover:bg-slate-700/50"
+                    )}
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <span className="w-6 text-center text-sm font-semibold text-white">
+                    {purchaseQuantity}
+                  </span>
+                  <button
+                    onClick={incrementQuantity}
+                    disabled={purchaseQuantity >= 10}
+                    className={cn(
+                      "p-1 rounded transition-all duration-200",
+                      purchaseQuantity >= 10
+                        ? "text-slate-600 cursor-not-allowed"
+                        : "text-slate-300 hover:text-white hover:bg-slate-700/50"
+                    )}
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+
+                {/* Buy Button - Compact */}
+                <button
+                  onClick={handlePurchase}
+                  className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black font-bold py-2 px-4 sm:px-6 rounded-lg text-sm transition-all duration-300 hover:scale-105 shadow-md hover:shadow-lg whitespace-nowrap"
+                >
+                  Buy {purchaseQuantity > 1 ? `${purchaseQuantity} ` : ''}Eko{purchaseQuantity > 1 ? 's' : ''}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1201,89 +1267,6 @@ export default function ScavenjersCollectionPage() {
           
           {activeTab === 'explore' && (
             <>
-              {/* Purchase Section */}
-              <div className="mb-8 p-6 bg-gradient-to-r from-slate-800/30 to-slate-700/30 backdrop-blur-sm border border-slate-600/30 rounded-xl">
-                <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
-                  {/* Left side - Information */}
-                  <div className="flex-1 text-center lg:text-left">
-                    <h3 className="text-2xl font-bold text-white mb-2 font-display">
-                      Get Your Random Eko
-                    </h3>
-                    <p className="text-slate-300 mb-3">
-                      Choose from <span className="text-cyan-400 font-semibold">9,000 unique Ekos</span> with randomized traits and abilities.
-                      Join the Scavenjer community and discover your perfect companion!
-                    </p>
-                    <div className="flex items-center justify-center lg:justify-start gap-2 text-sm text-slate-400">
-                      <ShoppingCart size={16} />
-                      <span>Secure payment via Crossmint • Credit cards & crypto accepted</span>
-                    </div>
-                  </div>
-
-                  {/* Right side - Purchase Controls */}
-                  <div className="flex-shrink-0">
-                    <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-600/50 rounded-xl p-4 min-w-[280px]">
-                      <div className="text-center mb-4">
-                        <div className="text-2xl font-bold text-white mb-1">
-                          ~$19 <span className="text-sm font-normal text-slate-400">USD each</span>
-                        </div>
-                        <div className="text-sm text-slate-400">
-                          Current Est. Total: <span className="text-cyan-400 font-semibold">${(19 * purchaseQuantity).toFixed(0)} USD</span>
-                        </div>
-                        <div className="text-xs text-slate-500 mt-1">
-                          Pricing fluctuates based on Polygon network
-                        </div>
-                      </div>
-
-                      {/* Quantity Selector */}
-                      <div className="flex items-center justify-center gap-4 mb-4">
-                        <span className="text-sm text-slate-300">Quantity:</span>
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={decrementQuantity}
-                            disabled={purchaseQuantity <= 1}
-                            className={cn(
-                              "p-2 rounded-lg transition-all duration-200",
-                              purchaseQuantity <= 1
-                                ? "bg-slate-700/50 text-slate-500 cursor-not-allowed"
-                                : "bg-slate-700/80 text-white hover:bg-slate-600/80"
-                            )}
-                          >
-                            <Minus size={16} />
-                          </button>
-                          <span className="w-8 text-center text-lg font-semibold text-white">
-                            {purchaseQuantity}
-                          </span>
-                          <button
-                            onClick={incrementQuantity}
-                            disabled={purchaseQuantity >= 10}
-                            className={cn(
-                              "p-2 rounded-lg transition-all duration-200",
-                              purchaseQuantity >= 10
-                                ? "bg-slate-700/50 text-slate-500 cursor-not-allowed"
-                                : "bg-slate-700/80 text-white hover:bg-slate-600/80"
-                            )}
-                          >
-                            <Plus size={16} />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Buy Button */}
-                      <button
-                        onClick={handlePurchase}
-                        className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-yellow-500/25"
-                      >
-                        Buy {purchaseQuantity} Random Eko{purchaseQuantity > 1 ? 's' : ''} with Crossmint
-                      </button>
-                      
-                      <div className="text-xs text-slate-500 text-center mt-2">
-                        Max 10 Ekos per transaction
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               {/* Show skeletons immediately when filtering starts */}
               {showSkeletons ? (
                 <div className="relative">

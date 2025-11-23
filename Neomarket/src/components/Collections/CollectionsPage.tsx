@@ -33,7 +33,7 @@ const mainCollection: Collection = {
   owners: 10,
   listed: 0,
   verified: true,
-  creator: 'NeoMarket',
+  creator: 'Akibaza Studios + Scavenjer',
   chain: 'polygon',
   category: ['Gaming', 'Adventure'],
   createdAt: '2023-06-15'

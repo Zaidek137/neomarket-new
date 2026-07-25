@@ -42,25 +42,49 @@ export interface VoteNotificationData {
 }
 
 class DiscordWebhookService {
-  private webhookUrl: string | null = null;
+  private notifyEndpoint: string | null = null;
 
   constructor() {
-    // Get webhook URL from environment variables
-    this.webhookUrl = import.meta.env.VITE_DISCORD_WEBHOOK_URL || null;
+    // Get notification relay URL from environment variables
+    this.notifyEndpoint = import.meta.env.VITE_DISCORD_NOTIFY_ENDPOINT || null;
     
-    if (!this.webhookUrl) {
-      console.warn('⚠️ Discord webhook URL not configured. Set VITE_DISCORD_WEBHOOK_URL in your .env file.');
+    if (!this.notifyEndpoint) {
+      console.warn('Discord notification relay not configured. Set VITE_DISCORD_NOTIFY_ENDPOINT to a server-side relay URL.');
     }
+  }
+
+  private async sendToRelay(payload: DiscordWebhookPayload): Promise<boolean> {
+    if (!this.notifyEndpoint) {
+      console.log('Discord notification relay not configured, skipping notification');
+      return false;
+    }
+
+    const response = await fetch(this.notifyEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        channel: 'community',
+        embeds: payload.embeds || [],
+        username: payload.username,
+        avatarUrl: payload.avatar_url,
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Discord notification relay failed:', response.status, errorText);
+      return false;
+    }
+
+    return true;
   }
 
   /**
    * Send a vote notification to Discord
    */
   async sendVoteNotification(data: VoteNotificationData): Promise<boolean> {
-    if (!this.webhookUrl) {
-      console.log('🔕 Discord webhook not configured, skipping notification');
-      return false;
-    }
 
     try {
       const embed = this.createVoteEmbed(data);
@@ -70,25 +94,10 @@ class DiscordWebhookService {
         embeds: [embed]
       };
 
-      console.log('📤 Sending Discord webhook notification...');
-      const response = await fetch(this.webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Discord webhook failed:', response.status, errorText);
-        return false;
-      }
-
-      console.log('✅ Discord notification sent successfully');
-      return true;
+      console.log('Sending Discord notification relay...');
+      return await this.sendToRelay(payload);
     } catch (error) {
-      console.error('❌ Error sending Discord webhook:', error);
+      console.error('Error sending Discord notification:', error);
       return false;
     }
   }
@@ -207,10 +216,6 @@ class DiscordWebhookService {
     endDate: string,
     proposalImageUrl?: string
   ): Promise<boolean> {
-    if (!this.webhookUrl) {
-      console.log('🔕 Discord webhook not configured, skipping notification');
-      return false;
-    }
 
     try {
       // Format end date
@@ -271,24 +276,9 @@ class DiscordWebhookService {
       };
 
       console.log('📤 Sending proposal creation notification...');
-      const response = await fetch(this.webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Discord webhook failed:', response.status, errorText);
-        return false;
-      }
-
-      console.log('✅ Proposal creation notification sent');
-      return true;
+      return await this.sendToRelay(payload);
     } catch (error) {
-      console.error('❌ Error sending Discord webhook:', error);
+      console.error('Error sending Discord notification:', error);
       return false;
     }
   }
@@ -297,28 +287,25 @@ class DiscordWebhookService {
    * Test the webhook connection
    */
   async testWebhook(): Promise<boolean> {
-    if (!this.webhookUrl) {
-      console.error('❌ No webhook URL configured');
+    if (!this.notifyEndpoint) {
+      console.error('No Discord notification relay configured');
       return false;
     }
 
     try {
       const payload: DiscordWebhookPayload = {
         username: 'Nexus Voting Bot',
-        content: '✅ Webhook test successful! The Nexus voting system is connected to Discord.'
+        embeds: [{
+          title: 'Notification relay test',
+          description: 'The Nexus voting system is connected to the Discord notification relay.',
+          color: 0x10B981,
+          timestamp: new Date().toISOString()
+        }]
       };
 
-      const response = await fetch(this.webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
-      });
-
-      return response.ok;
+      return await this.sendToRelay(payload);
     } catch (error) {
-      console.error('❌ Webhook test failed:', error);
+      console.error('Notification relay test failed:', error);
       return false;
     }
   }

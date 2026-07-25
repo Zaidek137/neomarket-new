@@ -1,7 +1,6 @@
 import { NATIVE_TOKEN_ADDRESS } from "thirdweb";
 
-export const THIRDWEB_CLIENT_ID = import.meta.env.VITE_THIRDWEB_CLIENT_ID || "dc56b7276133338ec60eebc93d1c38b1";
-export const THIRDWEB_SECRET_KEY = import.meta.env.VITE_THIRDWEB_SECRET_KEY;
+export const THIRDWEB_CLIENT_ID = import.meta.env.VITE_THIRDWEB_CLIENT_ID || "missing-client-id";
 
 // API Configuration
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (

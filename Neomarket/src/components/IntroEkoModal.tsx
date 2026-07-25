@@ -2,17 +2,18 @@ import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Users, Trophy, Vote, Zap, Eye, Plus, Minus } from 'lucide-react';
 import { useActiveAccount, ConnectButton } from 'thirdweb/react';
-import { CrossmintProvider, CrossmintHostedCheckout } from "@crossmint/client-sdk-react-ui";
 import { createThirdwebClient } from 'thirdweb';
 import { createWallet } from 'thirdweb/wallets';
 import { polygon } from 'thirdweb/chains';
 import { useNavigate } from 'react-router-dom';
+import CrossmintHostedCheckoutButton from './CrossmintHostedCheckoutButton';
 
 const client = createThirdwebClient({
-  clientId: "dc56b7276133338ec60eebc93d1c38b1"
+  clientId: import.meta.env.VITE_THIRDWEB_CLIENT_ID || "missing-client-id"
 });
 
-const clientApiKey = "ck_production_5pLaG5zFyQ6nW2RuHYgapoJKcG4eV8ac5wHvki3bzyBA4MjBRxFybM2zCcQzyH1LttngQDgdDzTK8d47iwfxYrdSpAEwz9cpnrWuR9FwYxApVg9YMPXgPrTkNv4JWY6BgVtNNRmuM25Rm6R1i4KPL8dkbrv3UGLkpYgx83hp6eLRKw4oSmKfEN7z8tKcbX8k91HKcvpZCBDGcHn7kXpUfDCf";
+const clientApiKey =
+  import.meta.env.VITE_CROSSMINT_CLIENT_KEY || import.meta.env.VITE_CROSSMINT_CLIENT_API_KEY || "";
 const COLLECTION_ID = '53ffb7b4-fc5e-4b61-b1e9-90bba9e23978';
 
 interface IntroEkoModalProps {
@@ -211,20 +212,19 @@ export default function IntroEkoModal({ isOpen, onClose }: IntroEkoModalProps) {
                     {address ? (
                       // Wallet is connected - show Crossmint checkout
                       <>
-                        <CrossmintProvider apiKey={clientApiKey}>
-                          <CrossmintHostedCheckout
-                            lineItems={{
-                              collectionLocator: `crossmint:${COLLECTION_ID}`,
-                              callData: {
-                                totalPrice: (74 * purchaseQuantity).toString(),
-                                quantity: purchaseQuantity,
-                              },
-                            }}
-                            payment={{ crypto: { enabled: true }, fiat: { enabled: true } }}
-                            className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-black px-6 py-3 rounded-lg font-bold transition-all duration-200 flex items-center justify-center gap-2 shadow-lg"
-                            recipient={{ walletAddress: address }}
-                          />
-                        </CrossmintProvider>
+                        <CrossmintHostedCheckoutButton
+                          apiKey={clientApiKey}
+                          lineItems={{
+                            collectionLocator: `crossmint:${COLLECTION_ID}`,
+                            callData: {
+                              totalPrice: (74 * purchaseQuantity).toString(),
+                              quantity: purchaseQuantity,
+                            },
+                          }}
+                          payment={{ crypto: { enabled: true }, fiat: { enabled: true } }}
+                          className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-black px-6 py-3 rounded-lg font-bold transition-all duration-200 flex items-center justify-center gap-2 shadow-lg"
+                          recipient={{ walletAddress: address }}
+                        />
                         <div className="text-center text-xs text-slate-500 mt-3">
                           Powered by Crossmint • Secure checkout
                         </div>

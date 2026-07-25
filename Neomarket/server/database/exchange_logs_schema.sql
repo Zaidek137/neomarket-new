@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS exchange_logs (
     token_id TEXT NOT NULL,
     
     -- Reward information
-    reward_id TEXT NOT NULL, -- References burn_rewards.id
+    reward_id TEXT NULL, -- References burn_rewards.id
     usdt_amount DECIMAL(10,2) NOT NULL,
     reward_type TEXT NOT NULL CHECK (reward_type IN ('usdt', 'custom')),
     
@@ -58,8 +58,17 @@ COMMENT ON COLUMN exchange_logs.reward_id IS 'ID of the reward configuration use
 COMMENT ON COLUMN exchange_logs.status IS 'Processing status: pending, processed, or failed';
 COMMENT ON COLUMN exchange_logs.usdt_transaction_hash IS 'Transaction hash of USDT payment to user';
 
--- Temporarily disable Row Level Security for easier admin access
-ALTER TABLE exchange_logs DISABLE ROW LEVEL SECURITY;
+-- Row Level Security: exchange logs are written and managed by signed server APIs.
+ALTER TABLE exchange_logs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS exchange_logs_service_role_all ON exchange_logs;
+
+CREATE POLICY exchange_logs_service_role_all
+  ON exchange_logs
+  FOR ALL
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
 
 -- Create a view for admin dashboard
 CREATE OR REPLACE VIEW pending_exchanges AS
@@ -87,5 +96,6 @@ WHERE status = 'pending'
 ORDER BY created_at DESC;
 
 -- Grant permissions
-GRANT SELECT, INSERT, UPDATE ON exchange_logs TO authenticated, anon, service_role;
-GRANT SELECT ON pending_exchanges TO authenticated, anon, service_role;
+REVOKE SELECT, INSERT, UPDATE, DELETE ON exchange_logs FROM authenticated, anon;
+GRANT ALL ON exchange_logs TO service_role;
+GRANT SELECT ON pending_exchanges TO service_role;

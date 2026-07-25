@@ -538,7 +538,7 @@ export function BurnExchangeModal({
         reward: reward,
         userInfo: null, // Will be set by UserInfoModal if needed
         transferTransactionHash: transferResult?.transactionHash
-      });
+      }, account);
 
       console.log('✅ Exchange logged successfully');
 
@@ -737,6 +737,7 @@ export function UserInfoModal({
   reward, 
   selectedNft, 
   onSubmit,
+  account,
   client,
   sendTransaction,
   isPending = false
@@ -748,6 +749,7 @@ export function UserInfoModal({
   reward: BurnReward;
   selectedNft: any;
   onSubmit: () => void;
+  account?: any;
   client?: any;
   sendTransaction?: any;
   isPending?: boolean;
@@ -760,7 +762,7 @@ export function UserInfoModal({
     }
 
     // Handle serverless exchange with user info
-    if (client && sendTransaction && selectedNft) {
+    if (client && sendTransaction && selectedNft && account?.address) {
       try {
         // Use hardcoded server wallet address (serverless approach)
         const serverWalletAddress = SERVER_WALLET_ADDRESS;
@@ -775,7 +777,7 @@ export function UserInfoModal({
         const transferTx = prepareContractCall({
           contract: nftContract,
           method: "function transferFrom(address from, address to, uint256 tokenId)",
-          params: [selectedNft.owner || selectedNft.userAddress, serverWalletAddress, BigInt(selectedNft.id)]
+          params: [account.address, serverWalletAddress, BigInt(selectedNft.id)]
         });
 
         const transferResult = await new Promise((resolve, reject) => {
@@ -795,13 +797,13 @@ export function UserInfoModal({
 
         // Step 2: Log exchange event directly to Supabase with user info
         await rewardsService.logExchange({
-          userWalletAddress: selectedNft.owner || selectedNft.userAddress,
+          userWalletAddress: account.address,
           collectionAddress: selectedNft.collectionAddress,
           tokenId: selectedNft.id.toString(),
           reward: reward,
           userInfo: userInfo,
           transferTransactionHash: transferResult?.transactionHash
-        });
+        }, account);
         
         alert(`Exchange successful! Your ${reward.customReward?.title} reward will be processed and sent to the provided contact information.`);
       } catch (error) {
@@ -929,12 +931,14 @@ export function AdminPanelModal({
   isOpen, 
   onClose, 
   burnRewards, 
-  onRewardsUpdate 
+  onRewardsUpdate,
+  account
 }: {
   isOpen: boolean;
   onClose: () => void;
   burnRewards: BurnReward[];
   onRewardsUpdate: (rewards: BurnReward[]) => void;
+  account?: any;
 }) {
   const [newReward, setNewReward] = useState<Partial<BurnReward>>({
     collectionAddress: '',
@@ -960,8 +964,11 @@ export function AdminPanelModal({
         customReward: newReward.type === 'custom' ? newReward.customReward : undefined
       };
 
-      // Save directly to Supabase
-      const savedReward = await rewardsService.addBurnReward(reward);
+      if (!account?.address) {
+        throw new Error('Connect an admin wallet to manage rewards.');
+      }
+
+      const savedReward = await rewardsService.addBurnReward(reward, account);
 
       // Update local state with the reward returned from Supabase (includes ID)
       onRewardsUpdate([...burnRewards, savedReward]);
@@ -986,8 +993,11 @@ export function AdminPanelModal({
     }
 
     try {
-      // Delete directly from Supabase
-      await rewardsService.deleteBurnReward(rewardToDelete.id);
+      if (!account?.address) {
+        throw new Error('Connect an admin wallet to manage rewards.');
+      }
+
+      await rewardsService.deleteBurnReward(rewardToDelete.id, account);
 
       // Update local state only after successful deletion
       const updatedRewards = burnRewards.filter((_, i) => i !== index);
@@ -1122,6 +1132,7 @@ export function AdminPanelModal({
         <AdminExchangeLogsModal
           isOpen={showExchangeLogs}
           onClose={() => setShowExchangeLogs(false)}
+          account={account}
         />
       )}
     </div>

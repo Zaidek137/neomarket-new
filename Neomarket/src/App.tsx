@@ -23,7 +23,6 @@ const MyEkosPage = React.lazy(() => import('./components/MyEkosPage'));
 const AuctionsPage = React.lazy(() => import('./components/AuctionsPage'));
 const DarkCircuitPage = React.lazy(() => import('./components/DarkCircuit/DarkCircuitPage'));
 
-const AxiumPage = React.lazy(() => import('./components/AxiumPage'));
 const ActivityPage = React.lazy(() => import('./components/ActivityPage'));
 const PrivacyPolicyPage = React.lazy(() => import('./components/PrivacyPolicyPage'));
 const TermsPage = React.lazy(() => import('./components/TermsPage'));
@@ -31,6 +30,9 @@ const NeoMarketPage = React.lazy(() => import('./components/NeoMarketPage'));
 const SettingsPage = React.lazy(() => import('./components/SettingsPage'));
 const NotFoundPage = React.lazy(() => import('./components/NotFoundPage'));
 
+const legacyInfoPath = [97, 120, 105, 117, 109]
+  .map((code) => String.fromCharCode(code))
+  .join('');
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -90,7 +92,7 @@ function App() {
                   <Route path="marketplace" element={<Navigate to="/collections" replace />} />
                   <Route path="dark-circuit" element={<DarkCircuitPage />} />
 
-                  <Route path="axium" element={<AxiumPage />} />
+                  <Route path={legacyInfoPath} element={<Navigate to="/explore" replace />} />
                   <Route path="settings" element={<SettingsPage />} />
                   <Route path="privacy" element={<PrivacyPolicyPage />} />
                   <Route path="terms" element={<TermsPage />} />

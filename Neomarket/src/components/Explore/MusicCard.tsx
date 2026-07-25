@@ -64,7 +64,7 @@ export default function MusicCard() {
 
         {/* Action Button */}
         <button 
-          onClick={() => window.open('https://www.scavenjer.com/broadcast', '_blank')}
+          onClick={() => window.open('https://www.scavenjer.com/broadcast', '_blank', 'noopener,noreferrer')}
           className="w-full bg-white/20 backdrop-blur-md hover:bg-white/30 text-white border border-white/30 hover:border-white/50 px-4 py-3 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 shadow-lg group-hover:scale-105"
         >
           <span>Enter The Broadcast</span>

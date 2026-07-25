@@ -1,13 +1,13 @@
 # NFT Exchange Server
 
-Backend server for handling NFT exchanges using Thirdweb Vault and server wallets.
+Backend and serverless API support for handling NFT exchanges using signed wallet requests, Supabase service-role writes, and server wallets.
 
 ## Features
 
 - **Server-side NFT Processing**: Uses Thirdweb Vault for secure key management
 - **Automated USDT Rewards**: Automatically sends USDT rewards upon NFT transfer
 - **Multi-Collection Support**: Handle NFTs from different collections
-- **Admin Panel API**: Manage reward configurations
+- **Admin Panel API**: Manage reward configurations through signed admin wallet requests
 - **Webhook Support**: Automatic processing via webhooks
 
 ## Setup
@@ -28,6 +28,13 @@ Create a `.env` file with the following variables:
 THIRDWEB_CLIENT_ID=your_thirdweb_client_id
 THIRDWEB_VAULT_ID=your_vault_id
 THIRDWEB_ACCESS_TOKEN=your_access_token
+ADMIN_API_KEY=your_admin_api_key
+THIRDWEB_WEBHOOK_SECRET=your_thirdweb_webhook_secret
+NEOMARKET_ADMIN_WALLETS=0xAdminWalletOne,0xAdminWalletTwo
+NEOMARKET_ALLOWED_ORIGINS=http://localhost:5173,https://your-domain.example
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_server_only_service_role_key
+POLYGON_RPC_URL=https://polygon-rpc.com
 
 # Wallet Configuration
 SERVER_WALLET_ADDRESS=0x1234567890123456789012345678901234567890
@@ -87,8 +94,9 @@ npm start
 ## Security Features
 
 - **Non-custodial**: Private keys secured with TEE architecture
-- **Access control**: Granular permissions via Vault
+- **Access control**: Signed wallet requests for admin and exchange actions
 - **Transaction validation**: Server-side validation before processing
+- **RLS hardening**: Exchange table writes are service-role only
 - **Error handling**: Comprehensive error handling and logging
 
 ## Production Considerations

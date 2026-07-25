@@ -42,7 +42,16 @@ Create a `.env` file in the Neomarket directory:
 ```env
 VITE_SUPABASE_URL=your_supabase_project_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_NEOMARKET_ADMIN_WALLETS=0xAdminWalletOne,0xAdminWalletTwo
+NEOMARKET_ADMIN_WALLETS=0xAdminWalletOne,0xAdminWalletTwo
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+POLYGON_RPC_URL=https://polygon-rpc.com
+NEOMARKET_ALLOWED_ORIGINS=http://localhost:5173,https://your-domain.example
 ```
+
+The `VITE_*` admin wallet variables only control the visible admin UI. The server API also requires `NEOMARKET_ADMIN_WALLETS` so proposal writes cannot be authorized by client-side code alone.
+Use `NEOMARKET_ALLOWED_ORIGINS` or `ALLOWED_ORIGINS` to restrict production browser access to the signed service-role APIs.
 
 ### 2. Database Setup
 
@@ -51,16 +60,11 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 3. Execute the SQL from `src/database/voting-schema.sql`
 4. This will create all necessary tables, indexes, functions, and policies
 
+For an existing voting database, run `src/database/voting-rls-hardening.sql` after backing up the project. This removes direct browser write policies and requires proposal/vote writes to go through the signed `/api/voting/*` endpoints.
+
 ### 3. Admin Configuration
 
-Edit `src/config/admin.ts` and add your admin wallet addresses:
-```typescript
-export const ADMIN_WALLETS = [
-  "0xf8Ca9dA64Bb500C4C4395f7Bb987De3e77883130" // Current admin wallet
-].map(addr => addr.toLowerCase());
-```
-
-**Current Admin Wallet**: `0xf8Ca9dA64Bb500C4C4395f7Bb987De3e77883130`
+Set `VITE_NEOMARKET_ADMIN_WALLETS` or `VITE_ADMIN_WALLETS` to a comma-separated list of admin wallet addresses for the UI. Set the server-side `NEOMARKET_ADMIN_WALLETS` variable to the same comma-separated list for the signed voting API. Do not hardcode production admin wallets in `src/config/admin.ts`.
 
 ### 4. NFT Contract Configuration
 
@@ -140,9 +144,9 @@ The system supports real-time updates via Supabase subscriptions:
 
 ## Security Considerations
 
-1. **Row Level Security**: All tables have RLS enabled
-2. **Wallet Verification**: Admin actions require wallet ownership check
-3. **NFT Verification**: Voting requires Eko NFT ownership
+1. **Row Level Security**: All tables have RLS enabled, and write policies are service-role only
+2. **Wallet Verification**: Admin actions require a signed wallet message checked by the API
+3. **NFT Verification**: Voting requires server-side Eko NFT ownership verification
 4. **Vote Uniqueness**: Database enforces one vote per wallet per proposal
 5. **Audit Trail**: All actions are logged for transparency
 
@@ -151,8 +155,8 @@ The system supports real-time updates via Supabase subscriptions:
 ### Common Issues
 
 1. **"Only admins can create proposals"**
-   - Ensure your wallet address is in the ADMIN_WALLETS array
-   - Addresses must be lowercase
+   - Ensure your wallet address is listed in `VITE_NEOMARKET_ADMIN_WALLETS` or `VITE_ADMIN_WALLETS`
+   - Restart the dev server after changing environment variables
 
 2. **"You need to own at least one Eko NFT"**
    - Verify you own an Eko from the correct contract

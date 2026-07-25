@@ -1,8 +1,46 @@
 import express from 'express';
+import { timingSafeEqual } from 'crypto';
 import supabaseRewardStorage from '../services/supabaseRewardStorage.js';
 import exchangeLogStorage from '../services/exchangeLogStorage.js';
 
 const router = express.Router();
+
+function safeCompare(value, expected) {
+  const valueBuffer = Buffer.from(String(value));
+  const expectedBuffer = Buffer.from(String(expected));
+
+  if (valueBuffer.length !== expectedBuffer.length) {
+    return false;
+  }
+
+  return timingSafeEqual(valueBuffer, expectedBuffer);
+}
+
+function requireAdminAuth(req, res, next) {
+  const adminApiKey = process.env.ADMIN_API_KEY;
+
+  if (!adminApiKey) {
+    return res.status(503).json({
+      success: false,
+      error: 'Admin API authentication is not configured'
+    });
+  }
+
+  const authHeader = req.get('authorization') || '';
+  const bearerToken = authHeader.match(/^Bearer\s+(.+)$/i)?.[1];
+  const providedKey = req.get('x-admin-api-key') || bearerToken;
+
+  if (!providedKey || !safeCompare(providedKey, adminApiKey)) {
+    return res.status(401).json({
+      success: false,
+      error: 'Unauthorized'
+    });
+  }
+
+  next();
+}
+
+router.use(requireAdminAuth);
 
 /**
  * GET /api/admin/rewards

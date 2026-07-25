@@ -5,7 +5,7 @@ import { getOwnedNFTs, balanceOf } from 'thirdweb/extensions/erc721';
 import { createThirdwebClient } from 'thirdweb';
 import { polygon } from 'thirdweb/chains';
 
-const THIRDWEB_CLIENT_ID = "dc56b7276133338ec60eebc93d1c38b1";
+const THIRDWEB_CLIENT_ID = import.meta.env.VITE_THIRDWEB_CLIENT_ID || "missing-client-id";
 const NFT_COLLECTION_ADDRESS = "0x98E52EF271F0ff90F2f76A40Cb6A27dA011d279F"; // Correct NFT collection address
 
 const client = createThirdwebClient({ clientId: THIRDWEB_CLIENT_ID });

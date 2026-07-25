@@ -20,6 +20,20 @@
   "devDependencies": {
     "nodemon": "^3.0.1"
   },
+  "overrides": {
+    "@reown/appkit": "^1.8.20",
+    "@walletconnect/ethereum-provider": "^2.23.9",
+    "@walletconnect/sign-client": "^2.23.9",
+    "@walletconnect/universal-provider": "^2.23.9",
+    "@walletconnect/utils": "^2.23.9",
+    "axios": "^1.18.1",
+    "brace-expansion": "^5.0.8",
+    "js-yaml": "^4.3.0",
+    "minimatch": "^10.2.5",
+    "uuid": "^11.1.1",
+    "viem": "^2.52.0",
+    "ws": "^8.21.0"
+  },
   "keywords": [
     "nft",
     "blockchain",

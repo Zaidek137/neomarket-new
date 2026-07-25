@@ -1,7 +1,43 @@
 import express from 'express';
+import { timingSafeEqual } from 'crypto';
 import nftExchangeService from '../services/nftExchangeService.js';
 
 const router = express.Router();
+
+function safeCompare(value, expected) {
+  const valueBuffer = Buffer.from(String(value));
+  const expectedBuffer = Buffer.from(String(expected));
+
+  if (valueBuffer.length !== expectedBuffer.length) {
+    return false;
+  }
+
+  return timingSafeEqual(valueBuffer, expectedBuffer);
+}
+
+function requireWebhookSecret(req, res, next) {
+  const webhookSecret = process.env.THIRDWEB_WEBHOOK_SECRET || process.env.EXCHANGE_WEBHOOK_SECRET;
+
+  if (!webhookSecret) {
+    return res.status(503).json({
+      success: false,
+      error: 'Exchange webhook authentication is not configured'
+    });
+  }
+
+  const authHeader = req.get('authorization') || '';
+  const bearerToken = authHeader.match(/^Bearer\s+(.+)$/i)?.[1];
+  const providedSecret = req.get('x-webhook-secret') || bearerToken;
+
+  if (!providedSecret || !safeCompare(providedSecret, webhookSecret)) {
+    return res.status(401).json({
+      success: false,
+      error: 'Unauthorized'
+    });
+  }
+
+  next();
+}
 
 /**
  * GET /api/exchange/rewards
@@ -113,7 +149,7 @@ router.post('/initiate', async (req, res) => {
  * Thirdweb Insight webhook endpoint for automatic NFT transfer detection
  * Called automatically when NFT Transfer events occur
  */
-router.post('/webhook', async (req, res) => {
+router.post('/webhook', requireWebhookSecret, async (req, res) => {
   try {
     console.log('🔔 Webhook received:', req.body);
 

@@ -4,13 +4,15 @@
 
 ### 1. Execute SQL Schema
 
-Copy and paste the contents of `database/burn_rewards_schema.sql` into your Supabase SQL Editor and execute it.
+Copy and paste the contents of `database/complete_serverless_schema.sql` into your Supabase SQL Editor and execute it.
 
 This will create:
 - `burn_rewards` table with proper constraints and indexes
+- `exchange_logs` table with proper constraints and indexes
 - Row Level Security (RLS) policies
-- Helper functions for statistics
-- A view for easier querying
+- `pending_exchanges_view` for signed admin review
+
+For an existing exchange database, run `database/exchange-rls-hardening.sql` after backing up the project. This removes direct anonymous browser writes and requires reward management and exchange processing to go through the signed `/api/exchange/rewards` endpoint.
 
 ### 2. Verify Database Setup
 
@@ -34,14 +36,22 @@ AND table_name = 'burn_rewards';
 Set these environment variables in your Vercel dashboard:
 
 ```
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_SERVICE_KEY=your_service_role_key_here
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY:<your_service_role_key>
+NEOMARKET_ADMIN_WALLETS=0xAdminWalletOne,0xAdminWalletTwo
+NEOMARKET_ALLOWED_ORIGINS=https://your-frontend-domain.example,https://www.your-frontend-domain.example
+POLYGON_RPC_URL=https://polygon-rpc.com
 THIRDWEB_CLIENT_ID=your_thirdweb_client_id
 THIRDWEB_SECRET_KEY=your_thirdweb_secret_key
 VAULT_ADMIN_KEY=your_vault_admin_key
+ADMIN_API_KEY=your_admin_api_key
+THIRDWEB_WEBHOOK_SECRET=your_thirdweb_webhook_secret
 SERVER_WALLET_ADDRESS=your_server_wallet_address
 USDT_CONTRACT_ADDRESS=0xc2132D05D31c914a87C6611C10748AEb04B58e8F
+ALLOWED_ORIGINS=https://your-frontend-domain.example,https://www.your-frontend-domain.example
 ```
+
+`NEOMARKET_ADMIN_WALLETS` authorizes signed admin actions. `NEOMARKET_ALLOWED_ORIGINS` or `ALLOWED_ORIGINS` controls which browser origins can call the service-role APIs in production.
 
 ### 2. Deploy to Vercel
 
@@ -98,10 +108,10 @@ The deployment will automatically test the database connection on startup. Check
 
 ### 3. API Endpoints Test
 
-Test the main endpoints:
-- `GET /api/admin/rewards` - Should return empty array initially
-- `POST /api/admin/rewards` - Create a test reward
-- `GET /api/exchange/rewards` - Should return the created rewards
+Test the current serverless endpoint through the app UI:
+- Admin reward creation should prompt the connected admin wallet to sign a `NeoMarket Exchange API` message.
+- User exchange logging should prompt the connected wallet and only succeeds after the NFT is held by `SERVER_WALLET_ADDRESS`.
+- Pending exchange review should prompt an admin wallet before returning exchange data.
 
 ## Troubleshooting
 
@@ -139,6 +149,7 @@ Set up automated backups in Supabase dashboard.
 - Rotate API keys regularly
 - Monitor for unusual activity
 - Set up rate limiting if needed
+- Keep `ALLOWED_ORIGINS` limited to the production frontend domains that should call the API
 
 ### 4. Scaling
 

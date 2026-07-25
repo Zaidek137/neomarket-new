@@ -1,16 +1,17 @@
 import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useActiveAccount, ConnectButton } from 'thirdweb/react';
-import { CrossmintProvider, CrossmintHostedCheckout } from "@crossmint/client-sdk-react-ui";
 import { createThirdwebClient } from 'thirdweb';
 import { createWallet } from 'thirdweb/wallets';
 import { polygon } from 'thirdweb/chains';
+import CrossmintHostedCheckoutButton from './CrossmintHostedCheckoutButton';
 
 const client = createThirdwebClient({
-  clientId: "dc56b7276133338ec60eebc93d1c38b1"
+  clientId: import.meta.env.VITE_THIRDWEB_CLIENT_ID || "missing-client-id"
 });
 
-const clientApiKey = "ck_production_5pLaG5zFyQ6nW2RuHYgapoJKcG4eV8ac5wHvki3bzyBA4MjBRxFybM2zCcQzyH1LttngQDgdDzTK8d47iwfxYrdSpAEwz9cpnrWuR9FwYxApVg9YMPXgPrTkNv4JWY6BgVtNNRmuM25Rm6R1i4KPL8dkbrv3UGLkpYgx83hp6eLRKw4oSmKfEN7z8tKcbX8k91HKcvpZCBDGcHn7kXpUfDCf";
+const clientApiKey =
+  import.meta.env.VITE_CROSSMINT_CLIENT_KEY || import.meta.env.VITE_CROSSMINT_CLIENT_API_KEY || "";
 const COLLECTION_ID = '53ffb7b4-fc5e-4b61-b1e9-90bba9e23978';
 
 interface CrossmintCheckoutModalProps {
@@ -110,20 +111,19 @@ export default function CrossmintCheckoutModal({ isOpen, onClose, collectionTitl
               {address ? (
                 // Wallet is connected - show Crossmint checkout
                 <>
-                  <CrossmintProvider apiKey={clientApiKey}>
-                    <CrossmintHostedCheckout
-                      lineItems={{
-                        collectionLocator: `crossmint:${COLLECTION_ID}`,
-                        callData: {
-                          totalPrice: crossmintTotalPrice,
-                          quantity: quantity,
-                        },
-                      }}
-                      payment={{ crypto: { enabled: true }, fiat: { enabled: true } }}
-                      className="w-full bg-gradient-to-r from-[#2DD4BF] to-[#EC4899] text-white py-3 px-4 sm:px-6 rounded-lg font-semibold hover:from-[#2DD4BF]/90 hover:to-[#EC4899]/90 transition-all duration-300"
-                      recipient={{ walletAddress: address }}
-                    />
-                  </CrossmintProvider>
+                  <CrossmintHostedCheckoutButton
+                    apiKey={clientApiKey}
+                    lineItems={{
+                      collectionLocator: `crossmint:${COLLECTION_ID}`,
+                      callData: {
+                        totalPrice: crossmintTotalPrice,
+                        quantity: quantity,
+                      },
+                    }}
+                    payment={{ crypto: { enabled: true }, fiat: { enabled: true } }}
+                    className="w-full bg-gradient-to-r from-[#2DD4BF] to-[#EC4899] text-white py-3 px-4 sm:px-6 rounded-lg font-semibold hover:from-[#2DD4BF]/90 hover:to-[#EC4899]/90 transition-all duration-300"
+                    recipient={{ walletAddress: address }}
+                  />
                   <div className="text-center text-xs text-gray-500 mt-2">
                     You can purchase with your card or any cryptocurrency. Crossmint will handle the currency conversion for you.
                   </div>

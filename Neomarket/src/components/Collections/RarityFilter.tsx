@@ -1,23 +1,23 @@
 import React, { useState } from 'react';
 import { ChevronDown, Sparkles, Check } from 'lucide-react';
 import { cn, RarityCalculator } from '../../lib/utils';
-import type { NFTRarity } from '../../types/marketplace';
+import type { GameRarityTier } from '../../types/gameCollection';
 
 interface RarityFilterProps {
-  selectedTiers: NFTRarity['rarity_tier'][];
-  onTiersChange: (tiers: NFTRarity['rarity_tier'][]) => void;
+  selectedTiers: GameRarityTier[];
+  onTiersChange: (tiers: GameRarityTier[]) => void;
   tierCounts?: { [tier: string]: number };
   isFiltering?: boolean;
 }
 
-const rarityTiers: NFTRarity['rarity_tier'][] = [
+const rarityTiers: GameRarityTier[] = [
   'Mythic', 'Legendary', 'Epic', 'Rare', 'Uncommon', 'Common'
 ];
 
 export default function RarityFilter({ selectedTiers, onTiersChange, tierCounts, isFiltering }: RarityFilterProps) {
   const [isOpen, setIsOpen] = useState(true);
 
-  const toggleTier = (tier: NFTRarity['rarity_tier']) => {
+  const toggleTier = (tier: GameRarityTier) => {
     const newTiers = selectedTiers.includes(tier)
       ? selectedTiers.filter(t => t !== tier)
       : [...selectedTiers, tier];

@@ -22,9 +22,27 @@ import adminRoutes from './routes/admin.js';
 
 const app = express();
 const PORT = process.env.PORT || 3002;
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || '')
+  .split(',')
+  .map((origin) => origin.trim().replace(/\/$/, '').toLowerCase())
+  .filter(Boolean);
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    try {
+      const normalized = new URL(origin).origin.toLowerCase();
+      callback(null, allowedOrigins.includes(normalized));
+    } catch {
+      callback(null, false);
+    }
+  },
+}));
 app.use(express.json());
 
 // Health check endpoint
@@ -65,10 +83,13 @@ app.listen(PORT, () => {
   
   // Validate required environment variables
   const requiredEnvVars = [
+    'SUPABASE_URL',
+    'SUPABASE_SERVICE_ROLE_KEY',
     'THIRDWEB_CLIENT_ID',
     'THIRDWEB_SECRET_KEY',
     'SERVER_WALLET_ADDRESS',
     'USDT_CONTRACT_ADDRESS',
+    'ALLOWED_ORIGINS',
   ];
 
   const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);

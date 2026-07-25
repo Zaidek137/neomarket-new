@@ -73,7 +73,7 @@ export default function CreateProposalModal({ isOpen, onClose, onProposalCreated
         start_date: new Date().toISOString(),
         end_date: endDateTime.toISOString(),
         image_url: formData.image_url || null
-      });
+      }, account);
 
       onProposalCreated();
       onClose();

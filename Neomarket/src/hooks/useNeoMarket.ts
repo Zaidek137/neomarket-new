@@ -5,7 +5,7 @@ import { defineChain } from 'thirdweb/chains';
 import { CONTRACT_ADDRESS } from '../config/constants';
 import { EnrichedListing, EnrichedAuction } from '../types/marketplace';
 
-const THIRDWEB_CLIENT_ID = "dc56b7276133338ec60eebc93d1c38b1";
+const THIRDWEB_CLIENT_ID = import.meta.env.VITE_THIRDWEB_CLIENT_ID || "missing-client-id";
 const POLYGON_CHAIN = defineChain(137);
 
 const client = createThirdwebClient({ clientId: THIRDWEB_CLIENT_ID });

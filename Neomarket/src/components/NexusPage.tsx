@@ -114,7 +114,7 @@ export default function NexusPage() {
       }
       
       console.log('✅ Eko ownership verified, submitting vote...');
-      await votingService.submitVote(proposalId, account.address, voteType);
+      await votingService.submitVote(proposalId, account.address, voteType, account);
       
       // Update local state
       setUserVotes({ ...userVotes, [proposalId]: voteType });
@@ -152,7 +152,7 @@ export default function NexusPage() {
     try {
       setDeleting(proposalId);
       
-      await votingService.deleteProposal(proposalId, account.address);
+      await votingService.deleteProposal(proposalId, account.address, account);
       
       // Reload proposals to remove the deleted one
       await loadProposals();

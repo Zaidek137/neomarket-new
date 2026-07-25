@@ -2,11 +2,11 @@ import { createClient } from '@supabase/supabase-js';
 
 class ExchangeLogStorage {
   constructor() {
-    const supabaseUrl = process.env.VITE_SUPABASE_URL;
-    const supabaseServiceKey = process.env.VITE_SUPABASE_SERVICE_KEY;
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
     
     if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Missing Supabase configuration for exchange logs. Please check VITE_SUPABASE_URL and VITE_SUPABASE_SERVICE_KEY environment variables.');
+      throw new Error('Missing Supabase configuration for exchange logs. Please check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables.');
     }
 
     try {

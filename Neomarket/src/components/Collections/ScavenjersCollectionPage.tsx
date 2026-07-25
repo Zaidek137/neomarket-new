@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ExchangePage from '../Exchange/ExchangePage';
-import CrossmintCheckoutModal from '../CrossmintCheckoutModal';
 import { 
   Search, 
   SlidersHorizontal, 
@@ -12,17 +11,15 @@ import {
   Check, 
   Badge,
   Heart,
-  ShoppingCart,
   Eye,
-  Loader2,
-  Minus,
-  Plus
+  Loader2
 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { ipfsToHttp, generateOptimizedImageSources, preWarmAssets } from '../../lib/ipfs';
 import { rarityService } from '../../services/rarityService';
-import type { NFTRarity } from '../../types/marketplace';
+import { fetchGameCollectionItems } from '../../services/gameCollectionsService';
+import type { GameCollectionItem, GameRarityTier } from '../../types/gameCollection';
 import RarityFilter from './RarityFilter';
 
 // ⚡ PINATA GATEWAY OPTIMIZATION ⚡
@@ -30,16 +27,16 @@ import RarityFilter from './RarityFilter';
 // Now using dedicated gateway: https://ifps.scavenjer.com
 // Enhanced caching, smart fallbacks, and performance monitoring included
 
-interface NFTTrait {
+interface GameItemTrait {
   trait_type: string;
   value: string;
 }
 
-interface NFT {
+interface GameItemCardData {
   id: string;
   name: string;
   image: string;
-  attributes: NFTTrait[];
+  attributes: GameItemTrait[];
   description?: string;
 }
 
@@ -49,25 +46,23 @@ interface CollectionInfo {
   image: string;
   bannerImage?: string;
   totalSupply: number;
-  floorPrice: number;
-  totalVolume: number;
-  owners: number;
+  statusLabel: string;
   verified: boolean;
   creator: string;
 }
 
 const collectionInfo: CollectionInfo = {
   name: 'The Scavenjers',
-  description: 'Intro Eko collection to the Scavenjer ecosystem. A massive collection of unique digital collectibles exploring the post-apocalyptic world.',
+  description: 'Intro Eko collection for the Scavenjer game ecosystem. These items are curated for player inventory, traits, rarity, and future gameplay integrations.',
   image: 'https://zrolrdnymkkdcyksuctq.supabase.co/storage/v1/object/public/Gallery/Main%20Scavenjer.png',
   bannerImage: 'https://ik.imagekit.io/q9x52ygvo/banner-scavenjers.png',
   totalSupply: 9000,
-  floorPrice: 0.15,
-  totalVolume: 2847,
-  owners: 1500, // Estimated based on larger collection
+  statusLabel: 'Curated game collection',
   verified: true,
   creator: 'Scavenjer'
 };
+
+const CURATED_COLLECTION_ID = 'SCV-BASE-01';
 
 // Memoized trait option component to prevent unnecessary re-renders
 const TraitOption = React.memo(({ 
@@ -218,8 +213,8 @@ const TraitsFilter = React.memo(({
   collectionTraits: { [trait: string]: { [value: string]: number } };
   selectedTraits: { [trait: string]: Set<string> };
   onTraitsChange: (traits: { [trait: string]: Set<string> }) => void;
-  selectedRarityTiers: NFTRarity['rarity_tier'][];
-  onRarityTiersChange: (tiers: NFTRarity['rarity_tier'][]) => void;
+  selectedRarityTiers: GameRarityTier[];
+  onRarityTiersChange: (tiers: GameRarityTier[]) => void;
   tierCounts: { [tier: string]: number };
   isFiltering: boolean;
 }) => {
@@ -516,7 +511,7 @@ const OptimizedImage = React.memo(({
 
 
 
-const NFTCard = React.memo(function NFTCard({ nft, viewMode, onClick, priority = false, isMobile = false }: { nft: NFT; viewMode: 'grid' | 'list'; onClick: () => void; priority?: boolean; isMobile?: boolean }) {
+const GameItemCard = React.memo(function GameItemCard({ item, viewMode, onClick, priority = false, isMobile = false }: { item: GameItemCardData; viewMode: 'grid' | 'list'; onClick: () => void; priority?: boolean; isMobile?: boolean }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -537,14 +532,14 @@ const NFTCard = React.memo(function NFTCard({ nft, viewMode, onClick, priority =
         className="group cursor-pointer bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4 hover:bg-slate-700/30 hover:border-slate-600/50 transition-all duration-300"
       >
         <div className="flex items-center gap-4">
-          {/* NFT Image */}
+          {/* Item Image */}
           <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
             {!imageLoaded && !imageError && (
               <LoadingSpinner size="sm" />
             )}
             <OptimizedImage
-              src={nft.image}
-                alt={nft.name}
+              src={item.image}
+                alt={item.name}
                 className={cn(
                   "w-full h-full object-cover group-hover:scale-110 transition-transform duration-300",
                   imageLoaded ? "opacity-100" : "opacity-0"
@@ -559,7 +554,7 @@ const NFTCard = React.memo(function NFTCard({ nft, viewMode, onClick, priority =
           {/* Eko Info */}
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-white truncate group-hover:text-cyan-300 transition-colors">
-              {nft.name}
+              {item.name}
             </h3>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-sm text-slate-400">The Scavenjers</span>
@@ -590,14 +585,14 @@ const NFTCard = React.memo(function NFTCard({ nft, viewMode, onClick, priority =
       className="group cursor-pointer bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl overflow-hidden hover:bg-slate-700/30 hover:border-slate-600/50 hover:scale-105 transition-all duration-300"
       style={{ contentVisibility: 'auto' as any, containIntrinsicSize: '256px' as any }}
     >
-      {/* NFT Image */}
+      {/* Item Image */}
       <div className="relative aspect-square overflow-hidden">
         {!imageLoaded && !imageError && (
           <LoadingSpinner />
         )}
         <OptimizedImage
-          src={nft.image}
-            alt={nft.name}
+          src={item.image}
+            alt={item.name}
             className={cn(
               "w-full h-full object-cover group-hover:scale-110 transition-transform duration-500",
               imageLoaded ? "opacity-100" : "opacity-0"
@@ -618,28 +613,25 @@ const NFTCard = React.memo(function NFTCard({ nft, viewMode, onClick, priority =
               <button className="p-2 rounded-lg bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-colors">
                 <Heart size={16} className="text-white" />
               </button>
-              <button className="p-2 rounded-lg bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-colors">
-                <ShoppingCart size={16} className="text-white" />
-              </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* NFT Info */}
+      {/* Item Info */}
       <div className={cn("p-4", isMobile && "p-2")}>
         <h3 className={cn(
           "font-semibold text-white truncate group-hover:text-cyan-300 transition-colors mb-1",
           isMobile && "text-sm"
         )}>
-          {nft.name}
+          {item.name}
         </h3>
         <div className={cn("flex items-center justify-between text-sm", isMobile && "text-xs")}>
           <div className="flex items-center gap-1">
             <span className="text-slate-400">The Scavenjers</span>
             <Badge size={isMobile ? 8 : 12} className="text-cyan-400" />
           </div>
-          <span className="text-slate-500">#{nft.id}</span>
+          <span className="text-slate-500">#{item.id}</span>
         </div>
       </div>
     </motion.div>
@@ -648,7 +640,7 @@ const NFTCard = React.memo(function NFTCard({ nft, viewMode, onClick, priority =
 
 export default function ScavenjersCollectionPage() {
   useParams();
-  const [allNFTs, setAllNFTs] = useState<NFT[]>([]);
+  const [allItems, setAllItems] = useState<GameItemCardData[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtering, setFiltering] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -656,19 +648,15 @@ export default function ScavenjersCollectionPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [showFilters, setShowFilters] = useState(false); // Start with filters hidden
   const [selectedTraits, setSelectedTraits] = useState<{ [trait: string]: Set<string> }>({});
-  const [selectedRarityTiers, setSelectedRarityTiers] = useState<NFTRarity['rarity_tier'][]>([]);
+  const [selectedRarityTiers, setSelectedRarityTiers] = useState<GameRarityTier[]>([]);
   const [rarityData, setRarityData] = useState<any>(null);
   const [tierCounts, setTierCounts] = useState<{ [tier: string]: number }>({});
-  const [selectedNFT, setSelectedNFT] = useState<NFT | null>(null);
-  const [activeTab, setActiveTab] = useState<'explore' | 'exchange' | 'holders' | 'about'>('explore');
+  const [selectedItem, setSelectedItem] = useState<GameItemCardData | null>(null);
+  const [activeTab, setActiveTab] = useState<'explore' | 'exchange' | 'registry' | 'about'>('explore');
   const [visibleCount, setVisibleCount] = useState(36); // Start with 36 items for larger collection
   const [loadingMore, setLoadingMore] = useState(false);
   const [showSkeletons, setShowSkeletons] = useState(false);
   const [previousFilterState, setPreviousFilterState] = useState<string>('');
-  
-  // Purchase state
-  const [purchaseQuantity, setPurchaseQuantity] = useState(1);
-  const [showCrossmintModal, setShowCrossmintModal] = useState(false);
   
   // Mobile detection
   useEffect(() => {
@@ -706,24 +694,35 @@ export default function ScavenjersCollectionPage() {
   }, []);
   
   // Performance optimization: Pre-compute trait maps for faster filtering
-  const nftTraitMaps = useMemo(() => {
-    return allNFTs.map(nft => ({
-      nft,
-      traitMap: new Map((nft.attributes || []).map(attr => {
+  const itemTraitMaps = useMemo(() => {
+    return allItems.map(item => ({
+      item,
+      traitMap: new Map((item.attributes || []).map(attr => {
         const type = attr.trait_type?.trim();
         const value = attr.value?.trim();
         const displayValue = value === '' || value?.toLowerCase() === 'blank' ? 'None' : value;
         return [type, displayValue] as [string, string];
       }).filter(([type]) => type && type.length > 0)), // Filter out entries with empty trait types
-      searchText: nft.name.toLowerCase()
+      searchText: item.name.toLowerCase()
     }));
-  }, [allNFTs]);
+  }, [allItems]);
 
-  // Load NFT metadata with compression optimization
+  // Load curated game item metadata with archive fallback.
   useEffect(() => {
     async function loadMetadata() {
       setLoading(true);
       try {
+        const curatedItems = await fetchGameCollectionItems(CURATED_COLLECTION_ID, { limit: 500 });
+        if (curatedItems.length > 0) {
+          const items = curatedItems.map(gameItemToCardData);
+          setAllItems(items);
+          const imageUrls = items.slice(0, 20).map(item => item.image).filter(Boolean);
+          if (imageUrls.length > 0) {
+            preWarmAssets(imageUrls).catch(console.warn);
+          }
+          return;
+        }
+
         // Request with compression headers for better performance
         const response = await fetch('/metadata-fixed.json', {
           headers: {
@@ -735,50 +734,50 @@ export default function ScavenjersCollectionPage() {
         if (!response.ok) {
           // Fallback to import if fetch fails
         const data = await import('../../../metadata-fixed.json');
-        let nfts: any[] = [];
+        let archiveItems: GameItemCardData[] = [];
         if (Array.isArray(data)) {
-          nfts = data;
+          archiveItems = data;
         } else if (data && Array.isArray((data as any).default)) {
-          nfts = (data as any).default;
+          archiveItems = (data as any).default;
         }
-        setAllNFTs(nfts);
+        setAllItems(archiveItems);
           return;
         }
         
-        const nfts = await response.json();
-        if (Array.isArray(nfts)) {
-          setAllNFTs(nfts);
+        const archiveItems = await response.json();
+        if (Array.isArray(archiveItems)) {
+          setAllItems(archiveItems);
           
           // 🔥 Pre-warm first 20 images via Pinata gateway for faster loading
-          const imageUrls = nfts.slice(0, 20).map(nft => nft.image).filter(Boolean);
+          const imageUrls = archiveItems.slice(0, 20).map(item => item.image).filter(Boolean);
           if (imageUrls.length > 0) {
             preWarmAssets(imageUrls).catch(console.warn);
           }
         } else {
-          console.error('Invalid metadata format:', nfts);
-          setAllNFTs([]);
+          console.error('Invalid metadata format:', archiveItems);
+          setAllItems([]);
         }
       } catch (error) {
-        console.error('Error loading NFT metadata:', error);
+        console.error('Error loading game collection metadata:', error);
         // Final fallback
         try {
           const data = await import('../../../metadata-fixed.json');
-          let nfts: any[] = [];
+          let archiveItems: GameItemCardData[] = [];
           if (Array.isArray(data)) {
-            nfts = data;
+            archiveItems = data;
           } else if (data && Array.isArray((data as any).default)) {
-            nfts = (data as any).default;
+            archiveItems = (data as any).default;
           }
-          setAllNFTs(nfts);
+          setAllItems(archiveItems);
           
           // 🔥 Pre-warm images for fallback data too
-          const imageUrls = nfts.slice(0, 20).map(nft => nft.image).filter(Boolean);
+          const imageUrls = archiveItems.slice(0, 20).map(item => item.image).filter(Boolean);
           if (imageUrls.length > 0) {
             preWarmAssets(imageUrls).catch(console.warn);
           }
         } catch (fallbackError) {
           console.error('Fallback metadata loading failed:', fallbackError);
-          setAllNFTs([]);
+          setAllItems([]);
         }
       } finally {
         setLoading(false);
@@ -787,13 +786,13 @@ export default function ScavenjersCollectionPage() {
     loadMetadata();
   }, []);
 
-  // Calculate rarity data when NFTs are loaded
+  // Calculate rarity data when items are loaded
   useEffect(() => {
-    if (allNFTs.length > 0) {
+    if (allItems.length > 0) {
       const calculateRarity = async () => {
         try {
           const collectionId = 'scavenjers';
-          const rarityCollection = await rarityService.getCollectionRarity(collectionId, allNFTs);
+          const rarityCollection = await rarityService.getCollectionRarity(collectionId, allItems);
           const counts = rarityService.getTierCounts(collectionId);
           setRarityData(rarityCollection);
           setTierCounts(counts);
@@ -803,13 +802,13 @@ export default function ScavenjersCollectionPage() {
       };
       calculateRarity();
     }
-  }, [allNFTs]);
+  }, [allItems]);
 
   // Calculate collection traits with improved handling for the new collection
   const collectionTraits = useMemo(() => {
     const traitsMap: { [trait: string]: { [value: string]: number } } = {};
-    allNFTs.forEach(nft => {
-      (nft.attributes || []).forEach((trait: NFTTrait) => {
+    allItems.forEach(item => {
+      (item.attributes || []).forEach((trait: GameItemTrait) => {
         const type = trait.trait_type?.trim(); // Trim whitespace from trait types
         const value = trait.value?.trim(); // Trim whitespace from values
         
@@ -825,7 +824,7 @@ export default function ScavenjersCollectionPage() {
       });
     });
     return traitsMap;
-  }, [allNFTs]);
+  }, [allItems]);
 
   // Enhanced debouncing for better performance
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
@@ -895,7 +894,7 @@ export default function ScavenjersCollectionPage() {
   }, []);
 
   // Debounced rarity filter handler with immediate visual feedback
-  const handleRarityTiersChange = useCallback((newTiers: NFTRarity['rarity_tier'][]) => {
+  const handleRarityTiersChange = useCallback((newTiers: GameRarityTier[]) => {
     // Show immediate filtering state
     setFiltering(true);
     setShowSkeletons(true);
@@ -917,15 +916,15 @@ export default function ScavenjersCollectionPage() {
   }, [debouncedSearchQuery, selectedTraits, selectedRarityTiers]);
 
   // Optimized filter function with performance improvements and batching
-  const filteredNFTs = useMemo(() => {
+  const filteredItems = useMemo(() => {
     // Early return for empty data
-    if (nftTraitMaps.length === 0) {
+    if (itemTraitMaps.length === 0) {
       return [];
     }
 
     setFiltering(true);
     
-    let filtered = nftTraitMaps;
+    let filtered = itemTraitMaps;
 
     // Search filter with optimized string matching
     if (debouncedSearchQuery) {
@@ -941,8 +940,8 @@ export default function ScavenjersCollectionPage() {
         // Early exit: check all traits in one pass
         return traitEntries.every(([trait, selectedValues]) => {
           if (selectedValues.size === 0) return true;
-          const nftValue = item.traitMap.get(trait);
-          return nftValue && selectedValues.has(nftValue);
+          const itemValue = item.traitMap.get(trait);
+          return itemValue && selectedValues.has(itemValue);
         });
       });
     }
@@ -950,12 +949,12 @@ export default function ScavenjersCollectionPage() {
     // Rarity filtering
     if (selectedRarityTiers.length > 0 && rarityData) {
       filtered = filtered.filter(item => {
-        const nftRarity = rarityData.nft_rarities[item.nft.id || item.nft.name];
-        return nftRarity && selectedRarityTiers.includes(nftRarity.rarity_tier);
+        const itemRarity = rarityData.nft_rarities[item.item.id || item.item.name];
+        return itemRarity && selectedRarityTiers.includes(itemRarity.rarity_tier);
       });
     }
 
-    const result = filtered.map(item => item.nft);
+    const result = filtered.map(item => item.item);
 
     // Use requestIdleCallback for non-blocking state update
     if ('requestIdleCallback' in window) {
@@ -982,21 +981,21 @@ export default function ScavenjersCollectionPage() {
     }
     
     return result;
-  }, [nftTraitMaps, debouncedSearchQuery, selectedTraits, selectedRarityTiers, rarityData]);
+  }, [itemTraitMaps, debouncedSearchQuery, selectedTraits, selectedRarityTiers, rarityData]);
 
   // Memoize expensive operations for better performance
   const collectionStats = useMemo(() => {
     return {
-      totalItems: filteredNFTs.length,
-      remainingItems: Math.max(0, filteredNFTs.length - visibleCount),
-      hasMore: visibleCount < filteredNFTs.length
+      totalItems: filteredItems.length,
+      remainingItems: Math.max(0, filteredItems.length - visibleCount),
+      hasMore: visibleCount < filteredItems.length
     };
-  }, [filteredNFTs.length, visibleCount]);
+  }, [filteredItems.length, visibleCount]);
 
-  // Get visible NFTs based on current visible count
-  const visibleNFTs = useMemo(() => {
-    return filteredNFTs.slice(0, visibleCount);
-  }, [filteredNFTs, visibleCount]);
+  // Get visible items based on current visible count
+  const visibleItems = useMemo(() => {
+    return filteredItems.slice(0, visibleCount);
+  }, [filteredItems, visibleCount]);
 
   // Optimized load more function with better performance
   const handleLoadMore = useCallback(async () => {
@@ -1018,19 +1017,6 @@ export default function ScavenjersCollectionPage() {
     setVisibleCount(prev => Math.min(prev + 36, collectionStats.totalItems));
     setLoadingMore(false);
   }, [loadingMore, collectionStats.hasMore, collectionStats.totalItems]);
-
-  // Purchase quantity handlers
-  const incrementQuantity = useCallback(() => {
-    setPurchaseQuantity(prev => Math.min(prev + 1, 10)); // Max 10 NFTs
-  }, []);
-
-  const decrementQuantity = useCallback(() => {
-    setPurchaseQuantity(prev => Math.max(prev - 1, 1)); // Min 1 NFT
-  }, []);
-
-  const handlePurchase = useCallback(() => {
-    setShowCrossmintModal(true);
-  }, []);
 
   if (loading) {
     return (
@@ -1093,7 +1079,7 @@ export default function ScavenjersCollectionPage() {
 
           {/* Navigation Tabs */}
           <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-            {(['explore', 'exchange', 'holders', 'about'] as const).map((tab) => (
+            {(['explore', 'exchange', 'registry', 'about'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -1107,64 +1093,6 @@ export default function ScavenjersCollectionPage() {
                 {tab === 'exchange' ? 'The Exchange' : tab}
               </button>
             ))}
-          </div>
-
-          {/* Compact Purchase Section - Integrated into Header */}
-          <div className="mt-4 p-3 sm:p-4 bg-gradient-to-r from-slate-800/30 to-slate-700/30 backdrop-blur-sm border border-slate-600/30 rounded-lg">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
-              {/* Left: Title & Price */}
-              <div className="flex items-center gap-3 sm:gap-4">
-                <div className="hidden sm:block w-8 h-8 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-lg flex-shrink-0 flex items-center justify-center">
-                  <ShoppingCart size={18} className="text-black" />
-                </div>
-                <div>
-                  <h3 className="text-base sm:text-lg font-bold text-white">Get Your Random Eko</h3>
-                  <p className="text-xs sm:text-sm text-slate-400">~$19 USD each • Max 10 per transaction</p>
-                </div>
-              </div>
-
-              {/* Right: Quantity & Buy */}
-              <div className="flex items-center gap-2 sm:gap-3">
-                {/* Quantity Selector - Compact */}
-                <div className="flex items-center gap-2 bg-slate-900/50 rounded-lg px-2 py-1.5">
-                  <button
-                    onClick={decrementQuantity}
-                    disabled={purchaseQuantity <= 1}
-                    className={cn(
-                      "p-1 rounded transition-all duration-200",
-                      purchaseQuantity <= 1
-                        ? "text-slate-600 cursor-not-allowed"
-                        : "text-slate-300 hover:text-white hover:bg-slate-700/50"
-                    )}
-                  >
-                    <Minus size={14} />
-                  </button>
-                  <span className="w-6 text-center text-sm font-semibold text-white">
-                    {purchaseQuantity}
-                  </span>
-                  <button
-                    onClick={incrementQuantity}
-                    disabled={purchaseQuantity >= 10}
-                    className={cn(
-                      "p-1 rounded transition-all duration-200",
-                      purchaseQuantity >= 10
-                        ? "text-slate-600 cursor-not-allowed"
-                        : "text-slate-300 hover:text-white hover:bg-slate-700/50"
-                    )}
-                  >
-                    <Plus size={14} />
-                  </button>
-                </div>
-
-                {/* Buy Button - Compact */}
-                <button
-                  onClick={handlePurchase}
-                  className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black font-bold py-2 px-4 sm:px-6 rounded-lg text-sm transition-all duration-300 hover:scale-105 shadow-md hover:shadow-lg whitespace-nowrap"
-                >
-                  Buy {purchaseQuantity > 1 ? `${purchaseQuantity} ` : ''}Eko{purchaseQuantity > 1 ? 's' : ''}
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -1286,7 +1214,7 @@ export default function ScavenjersCollectionPage() {
                     </div>
                   </div>
                 </div>
-              ) : filteredNFTs.length > 0 ? (
+              ) : filteredItems.length > 0 ? (
                 <div className="relative">
                   {/* Secondary filtering overlay for heavy operations */}
                   {filtering && (
@@ -1305,12 +1233,12 @@ export default function ScavenjersCollectionPage() {
                         ? "grid-cols-3 gap-2" // Mobile: 3 columns, smaller gaps
                         : "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4" // Desktop: original layout
                     )}>
-                      {visibleNFTs.map((nft, i) => (
-                        <NFTCard
-                          key={nft.id}
-                          nft={nft}
+                      {visibleItems.map((item, i) => (
+                        <GameItemCard
+                          key={item.id}
+                          item={item}
                           viewMode={viewMode}
-                          onClick={() => setSelectedNFT(nft)}
+                          onClick={() => setSelectedItem(item)}
                           priority={i < 12} // First 12 items get priority loading
                           isMobile={isMobile}
                         />
@@ -1318,12 +1246,12 @@ export default function ScavenjersCollectionPage() {
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {visibleNFTs.map((nft, i) => (
-                        <NFTCard
-                          key={nft.id}
-                          nft={nft}
+                      {visibleItems.map((item, i) => (
+                        <GameItemCard
+                          key={item.id}
+                          item={item}
                           viewMode={viewMode}
-                          onClick={() => setSelectedNFT(nft)}
+                          onClick={() => setSelectedItem(item)}
                           priority={i < 12}
                           isMobile={isMobile}
                         />
@@ -1370,10 +1298,10 @@ export default function ScavenjersCollectionPage() {
             </>
           )}
 
-          {activeTab === 'holders' && (
+          {activeTab === 'registry' && (
             <div className="text-center py-20">
-              <h3 className="text-white mb-2">Holders</h3>
-              <p className="text-slate-500 text-sm">Coming soon...</p>
+              <h3 className="text-white mb-2">Registry</h3>
+              <p className="text-slate-500 text-sm">Collection registry data is coming soon.</p>
             </div>
           )}
 
@@ -1383,9 +1311,8 @@ export default function ScavenjersCollectionPage() {
                 <div>
                   <h3 className="text-white font-medium mb-3">About The Scavenjers</h3>
                   <p className="text-slate-400 text-sm leading-relaxed">
-                      Intro Eko collection to the Scavenjer ecosystem. A massive collection of 9,000 unique digital collectibles 
-                      exploring the post-apocalyptic world. Each Scavenjer represents a survivor with randomized traits and abilities, 
-                      navigating through the remnants of civilization.
+                      Intro Eko collection for the Scavenjer game ecosystem. This catalog is arranged for player inventory,
+                      rarity, traits, and future gameplay integrations across Scavenjer experiences.
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
@@ -1394,16 +1321,16 @@ export default function ScavenjersCollectionPage() {
                     <div className="text-white font-medium">{collectionInfo.totalSupply.toLocaleString()}</div>
                   </div>
                   <div>
-                    <span className="text-slate-500">Owners</span>
-                    <div className="text-white font-medium">{collectionInfo.owners.toLocaleString()}</div>
+                    <span className="text-slate-500">Status</span>
+                    <div className="text-white font-medium">{collectionInfo.statusLabel}</div>
                   </div>
                   <div>
                     <span className="text-slate-500">Creator</span>
                     <div className="text-white font-medium">{collectionInfo.creator}</div>
                   </div>
                   <div>
-                    <span className="text-slate-500">Chain</span>
-                    <div className="text-white font-medium">Polygon</div>
+                    <span className="text-slate-500">Collection ID</span>
+                    <div className="text-white font-medium">{CURATED_COLLECTION_ID}</div>
                   </div>
                 </div>
               </div>
@@ -1412,8 +1339,8 @@ export default function ScavenjersCollectionPage() {
         </div>
       </div>
 
-      {/* NFT Detail Modal */}
-      {selectedNFT && (
+      {/* Item Detail Modal */}
+      {selectedItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -1423,9 +1350,9 @@ export default function ScavenjersCollectionPage() {
             <div className="p-6">
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-white">{selectedNFT.name}</h2>
+                <h2 className="text-2xl font-bold text-white">{selectedItem.name}</h2>
                 <button
-                  onClick={() => setSelectedNFT(null)}
+                  onClick={() => setSelectedItem(null)}
                   className="p-2 rounded-lg hover:bg-slate-700/50 transition-colors"
                 >
                   <X size={20} className="text-slate-400" />
@@ -1436,8 +1363,8 @@ export default function ScavenjersCollectionPage() {
                 {/* Image */}
                 <div className="aspect-square bg-slate-700/30 rounded-xl overflow-hidden">
                   <OptimizedImage
-                    src={selectedNFT.image}
-                    alt={selectedNFT.name}
+                    src={selectedItem.image}
+                    alt={selectedItem.name}
                     className="w-full h-full object-cover"
                     priority={true}
                     size="large"
@@ -1458,7 +1385,7 @@ export default function ScavenjersCollectionPage() {
                   <div>
                     <h3 className="text-lg font-semibold text-white mb-4">Traits</h3>
                     <div className="grid grid-cols-2 gap-3">
-                      {(selectedNFT.attributes || []).map((trait, index) => (
+                      {(selectedItem.attributes || []).map((trait, index) => (
                         <div
                           key={`${trait.trait_type}-${trait.value}-${index}`}
                           className="bg-slate-700/30 rounded-lg p-3 border border-slate-600/50"
@@ -1483,14 +1410,19 @@ export default function ScavenjersCollectionPage() {
         </div>
       )}
 
-      {/* Crossmint Purchase Modal */}
-      <CrossmintCheckoutModal
-        isOpen={showCrossmintModal}
-        onClose={() => setShowCrossmintModal(false)}
-        collectionTitle="The Scavenjers"
-        price={19 * purchaseQuantity}
-        quantity={purchaseQuantity}
-      />
     </div>
   );
+}
+
+function gameItemToCardData(item: GameCollectionItem): GameItemCardData {
+  return {
+    id: item.image_id,
+    name: item.name,
+    image: item.image || item.thumbnail_url || '',
+    description: item.description || undefined,
+    attributes: (item.attributes || []).map((attribute) => ({
+      trait_type: attribute.trait_type,
+      value: attribute.value,
+    })),
+  };
 }

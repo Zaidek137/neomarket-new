@@ -7,6 +7,7 @@ import { getOwnedNFTs, getNFT, balanceOf, totalSupply, ownerOf } from 'thirdweb/
 import { polygon } from 'thirdweb/chains';
 import { client } from '../../client';
 import { CONTRACT_ADDRESS, NFT_COLLECTION_ADDRESS, WMATIC_ADDRESS } from '../../config/constants';
+import { isAdminWallet } from '../../config/admin';
 import BuyModal from '../BuyModal';
 import { useCryptoPrice } from '../../hooks/useCryptoPrice';
 import { BurnExchangeModal, UserInfoModal, AdminPanelModal, BurnReward, UserInfo } from './BurnExchangeComponents';
@@ -67,16 +68,12 @@ export default function ExchangePage() {
   const [isAdmin, setIsAdmin] = useState(false); // This should be set based on wallet address
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [, setLoadingRewards] = useState(false);
+  const [exchangeBannerFailed, setExchangeBannerFailed] = useState(false);
 
-  // Check if user is admin (replace with your actual admin addresses)
+  // Check if user is admin based on configured environment wallets.
   useEffect(() => {
     if (account?.address) {
-      const adminAddresses = [
-        // Add your admin wallet addresses here
-        '0xf8Ca9dA64Bb500C4C4395f7Bb987De3e77883130'.toLowerCase(), // 
-      ];
-      const isUserAdmin = adminAddresses.includes(account.address.toLowerCase());
-      setIsAdmin(isUserAdmin);
+      setIsAdmin(isAdminWallet(account.address));
     } else {
       setIsAdmin(false);
     }
@@ -281,20 +278,18 @@ export default function ExchangePage() {
       <div className="relative h-[200px] sm:h-[240px] lg:h-[280px] w-full overflow-hidden rounded-xl mb-6">
         {/* Background Image */}
         <div className="absolute inset-0">
-          <img
-            src="https://zrolrdnymkkdcyksuctq.supabase.co/storage/v1/object/public/Gallery/Homepage%20Images/The%20Exchange.png"
-            alt="The Exchange"
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              // Fallback to text if image fails to load
-              const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
-              const fallback = document.createElement('div');
-              fallback.innerHTML = '<h1 class="text-3xl font-bold text-white text-center">The Exchange</h1>';
-              fallback.className = 'absolute inset-0 flex items-center justify-center bg-slate-800';
-              target.parentNode?.appendChild(fallback);
-            }}
-          />
+          {exchangeBannerFailed ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-800">
+              <h1 className="text-center text-3xl font-bold text-white">The Exchange</h1>
+            </div>
+          ) : (
+            <img
+              src="https://zrolrdnymkkdcyksuctq.supabase.co/storage/v1/object/public/Gallery/Homepage%20Images/The%20Exchange.png"
+              alt="The Exchange"
+              className="w-full h-full object-cover"
+              onError={() => setExchangeBannerFailed(true)}
+            />
+          )}
           {/* Dark overlay for better text readability */}
           <div className="absolute inset-0 bg-black/20" />
         </div>
@@ -523,6 +518,7 @@ export default function ExchangePage() {
           onUserInfoChange={setUserInfo}
           reward={selectedBurnReward}
           selectedNft={selectedNftForBurn}
+          account={account}
           client={client}
           sendTransaction={sendTransaction}
           isPending={isPending}
@@ -543,6 +539,7 @@ export default function ExchangePage() {
           onClose={() => setShowAdminPanel(false)}
           burnRewards={burnRewards}
           onRewardsUpdate={setBurnRewards}
+          account={account}
         />
       )}
       </div>

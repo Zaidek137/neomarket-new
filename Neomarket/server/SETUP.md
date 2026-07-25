@@ -15,7 +15,14 @@ THIRDWEB_SECRET_KEY=your_thirdweb_secret_key_here
 
 # Vault Configuration
 VAULT_ADMIN_KEY=your_vault_admin_key_here
+ADMIN_API_KEY=your_admin_api_key_here
+THIRDWEB_WEBHOOK_SECRET=your_thirdweb_webhook_secret_here
 SERVER_WALLET_ADDRESS=0x1234567890123456789012345678901234567890
+NEOMARKET_ADMIN_WALLETS=0xAdminWalletOne,0xAdminWalletTwo
+NEOMARKET_ALLOWED_ORIGINS=http://localhost:5173
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_server_only_service_role_key
+POLYGON_RPC_URL=https://polygon-rpc.com
 
 # Contract Addresses
 USDT_CONTRACT_ADDRESS=0xc2132D05D31c914a87C6611C10748AEb04B58e8F
@@ -82,6 +89,8 @@ The server should start on `http://localhost:3001`. You can test it by visiting:
 
 - **Never commit your `.env` file** to version control
 - **Keep your access tokens secure**
+- **Never expose `SUPABASE_SERVICE_ROLE_KEY` with a `VITE_` prefix**
+- **Keep `NEOMARKET_ALLOWED_ORIGINS` limited to trusted frontend domains**
 - **Use environment-specific configurations** for production
 - **Consider using a dedicated server wallet** separate from your main wallet
 

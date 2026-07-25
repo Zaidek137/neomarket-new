@@ -4,7 +4,6 @@ import CollectionSpotlight from './CollectionSpotlight';
 import NFTGrid from './NFTGrid';
 import FeaturedCollections from './FeaturedCollections';
 import VotingHighlight from './VotingHighlight';
-import AxiumCard from './AxiumCard';
 import MusicCard from './MusicCard';
 import { useNeoMarket } from '../../hooks/useNeoMarket';
 import { useCryptoPrice } from '../../hooks/useCryptoPrice';
@@ -57,9 +56,8 @@ export default function ExplorePage() {
         </div>
 
         {/* Feature Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <VotingHighlight />
-          <AxiumCard />
           <MusicCard />
         </div>
       </div>

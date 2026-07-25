@@ -43,10 +43,10 @@ COMMENT ON COLUMN burn_rewards.custom_reward IS 'JSON object containing custom r
 -- Row Level Security (RLS) policies
 ALTER TABLE burn_rewards ENABLE ROW LEVEL SECURITY;
 
--- Policy: Allow read access to all authenticated users
-CREATE POLICY "Allow read access for authenticated users" ON burn_rewards
+-- Policy: Allow read access to the public app
+CREATE POLICY "Allow read access for users" ON burn_rewards
     FOR SELECT
-    TO authenticated
+    TO authenticated, anon
     USING (true);
 
 -- Policy: Allow full access to service role (for server operations)

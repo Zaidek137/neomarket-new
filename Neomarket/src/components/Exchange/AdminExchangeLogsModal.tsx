@@ -21,9 +21,10 @@ interface ExchangeLog {
 interface AdminExchangeLogsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  account?: any;
 }
 
-export function AdminExchangeLogsModal({ isOpen, onClose }: AdminExchangeLogsModalProps) {
+export function AdminExchangeLogsModal({ isOpen, onClose, account }: AdminExchangeLogsModalProps) {
   const [exchanges, setExchanges] = useState<ExchangeLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedExchange, setSelectedExchange] = useState<ExchangeLog | null>(null);
@@ -38,7 +39,7 @@ export function AdminExchangeLogsModal({ isOpen, onClose }: AdminExchangeLogsMod
   const fetchPendingExchanges = async () => {
     setLoading(true);
     try {
-      const data = await rewardsService.getPendingExchanges();
+      const data = await rewardsService.getPendingExchanges(account);
       setExchanges(data);
     } catch (error) {
       console.error('Error fetching pending exchanges:', error);
@@ -51,8 +52,9 @@ export function AdminExchangeLogsModal({ isOpen, onClose }: AdminExchangeLogsMod
     try {
       await rewardsService.markExchangeProcessed(
         exchangeId,
-        'admin', // You can pass the actual admin wallet address here
-        usdtTxHash
+        account?.address || '',
+        usdtTxHash,
+        account
       );
       
       // Refresh the list

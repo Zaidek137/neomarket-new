@@ -1,5 +1,100 @@
 import { supabase, convertToFrontendFormat, convertToDbFormat, BurnRewardRow } from './supabaseClient';
 import { BurnReward } from '../components/Exchange/BurnExchangeComponents';
+import { API_BASE_URL } from '../config/constants';
+
+interface SigningAccount {
+  address?: string;
+  signMessage?: (args: { message: string } | string) => Promise<string>;
+}
+
+type ExchangeAction =
+  | 'addBurnReward'
+  | 'deleteBurnReward'
+  | 'logExchange'
+  | 'getPendingExchanges'
+  | 'markExchangeProcessed';
+
+interface SignedApiResponse<T> {
+  data?: T;
+  error?: string;
+}
+
+const EXCHANGE_MESSAGE_SCOPE = 'NeoMarket Exchange API';
+
+async function requestSignedExchangeAction<T>(
+  action: ExchangeAction,
+  payload: Record<string, unknown>,
+  account: SigningAccount
+): Promise<T> {
+  if (!account?.address || !account.signMessage) {
+    throw new Error('Please connect a wallet that supports message signing.');
+  }
+
+  const timestamp = String(Date.now());
+  const nonce = crypto.randomUUID();
+  const walletAddress = account.address.toLowerCase();
+  const payloadHash = await hashPayload(payload);
+  const message = [
+    EXCHANGE_MESSAGE_SCOPE,
+    `Action: ${action}`,
+    `Wallet: ${walletAddress}`,
+    `Nonce: ${nonce}`,
+    `Timestamp: ${timestamp}`,
+    `Payload Hash: ${payloadHash}`
+  ].join('\n');
+
+  let signature: string;
+  try {
+    signature = await account.signMessage({ message });
+  } catch {
+    signature = await account.signMessage(message);
+  }
+
+  const response = await fetch(`${API_BASE_URL}/exchange/rewards`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action,
+      walletAddress,
+      payload,
+      nonce,
+      timestamp,
+      signature
+    })
+  });
+
+  const result = await response.json() as SignedApiResponse<T>;
+
+  if (!response.ok || result.error || !result.data) {
+    throw new Error(result.error || 'Exchange request failed.');
+  }
+
+  return result.data;
+}
+
+async function hashPayload(payload: Record<string, unknown>) {
+  const data = new TextEncoder().encode(stableStringify(payload));
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value);
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(',')}]`;
+  }
+
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+    .join(',')}}`;
+}
 
 export class RewardsService {
   // Get all burn rewards
@@ -23,7 +118,7 @@ export class RewardsService {
   }
 
   // Add a new burn reward
-  async addBurnReward(reward: Omit<BurnReward, 'id'>): Promise<BurnReward> {
+  async addBurnReward(reward: Omit<BurnReward, 'id'>, account: SigningAccount): Promise<BurnReward> {
     try {
       // Check for existing reward
       const existingReward = await this.findRewardByCollection(
@@ -45,19 +140,7 @@ export class RewardsService {
         // Note: We explicitly don't include 'id' - let Supabase generate it
       };
       
-      const { data, error } = await supabase
-        .from('burn_rewards')
-        .insert([dbReward])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error adding burn reward:', error);
-        console.error('Reward data being inserted:', dbReward);
-        throw error;
-      }
-
-      return convertToFrontendFormat(data);
+      return await requestSignedExchangeAction<BurnReward>('addBurnReward', dbReward, account);
     } catch (error) {
       console.error('Error in addBurnReward:', error);
       throw error;
@@ -65,17 +148,9 @@ export class RewardsService {
   }
 
   // Delete a burn reward
-  async deleteBurnReward(id: string): Promise<void> {
+  async deleteBurnReward(id: string, account: SigningAccount): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('burn_rewards')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.error('Error deleting burn reward:', error);
-        throw error;
-      }
+      await requestSignedExchangeAction<{ id: string }>('deleteBurnReward', { id }, account);
     } catch (error) {
       console.error('Error in deleteBurnReward:', error);
       throw error;
@@ -200,29 +275,16 @@ export class RewardsService {
     reward: BurnReward;
     userInfo?: any;
     transferTransactionHash?: string;
-  }): Promise<void> {
+  }, account: SigningAccount): Promise<void> {
     try {
-      const logEntry = {
-        user_wallet_address: exchangeData.userWalletAddress,
-        collection_address: exchangeData.collectionAddress,
-        token_id: exchangeData.tokenId,
-        reward_id: exchangeData.reward.id!,
-        usdt_amount: exchangeData.reward.usdtAmount,
-        reward_type: exchangeData.reward.type,
-        custom_reward_data: exchangeData.reward.customReward || null,
-        user_info: exchangeData.userInfo || null,
-        transfer_transaction_hash: exchangeData.transferTransactionHash || null,
-        status: 'pending_usdt' as const
-      };
-
-      const { error } = await supabase
-        .from('exchange_logs')
-        .insert([logEntry]);
-
-      if (error) {
-        console.error('Error logging exchange:', error);
-        throw error;
-      }
+      await requestSignedExchangeAction('logExchange', {
+        userWalletAddress: exchangeData.userWalletAddress,
+        collectionAddress: exchangeData.collectionAddress,
+        tokenId: exchangeData.tokenId,
+        rewardId: exchangeData.reward.id,
+        userInfo: exchangeData.userInfo || null,
+        transferTransactionHash: exchangeData.transferTransactionHash || null
+      }, account);
 
       console.log('✅ Exchange logged successfully');
     } catch (error) {
@@ -232,19 +294,9 @@ export class RewardsService {
   }
 
   // Get pending exchanges for admin view
-  async getPendingExchanges() {
+  async getPendingExchanges(account: SigningAccount) {
     try {
-      const { data, error } = await supabase
-        .from('pending_exchanges_view')
-        .select('*')
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching pending exchanges:', error);
-        throw error;
-      }
-
-      return data || [];
+      return await requestSignedExchangeAction<any[]>('getPendingExchanges', {}, account);
     } catch (error) {
       console.error('Error in getPendingExchanges:', error);
       return [];
@@ -252,22 +304,13 @@ export class RewardsService {
   }
 
   // Mark exchange as processed
-  async markExchangeProcessed(exchangeId: string, adminWallet: string, usdtTransactionHash?: string) {
+  async markExchangeProcessed(exchangeId: string, adminWallet: string, usdtTransactionHash: string | undefined, account: SigningAccount) {
     try {
-      const { error } = await supabase
-        .from('exchange_logs')
-        .update({
-          status: 'processed',
-          processed_by_admin_wallet: adminWallet,
-          usdt_transaction_hash: usdtTransactionHash || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', exchangeId);
-
-      if (error) {
-        console.error('Error marking exchange as processed:', error);
-        throw error;
-      }
+      await requestSignedExchangeAction('markExchangeProcessed', {
+        exchangeId,
+        adminWallet,
+        usdtTransactionHash: usdtTransactionHash || null
+      }, account);
     } catch (error) {
       console.error('Error in markExchangeProcessed:', error);
       throw error;

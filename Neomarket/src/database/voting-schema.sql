@@ -1,6 +1,8 @@
 -- Execute this SQL in your Supabase SQL Editor
 -- This creates the complete voting system schema
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- Create enum for proposal categories
 CREATE TYPE proposal_category AS ENUM ('music', 'gaming', 'city_voting', 'creative_content');
 
@@ -23,6 +25,7 @@ CREATE TABLE proposals (
     created_by TEXT NOT NULL, -- admin wallet address
     start_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     end_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    image_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -95,7 +98,7 @@ BEGIN
     
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public;
 
 -- Create trigger to update vote counts
 CREATE TRIGGER update_vote_counts_trigger
@@ -133,7 +136,7 @@ BEGIN
     
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public;
 
 -- Create trigger to check proposal status
 CREATE TRIGGER check_proposal_status_trigger
@@ -151,19 +154,32 @@ ALTER TABLE voting_logs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can view active proposals" ON proposals
     FOR SELECT USING (status = 'active' OR status = 'passed' OR status = 'failed');
 
-CREATE POLICY "Only admins can create proposals" ON proposals
-    FOR INSERT WITH CHECK (true); -- Will check admin status in the app
+-- Proposal writes must go through the signed server API, which verifies admin wallets
+-- and writes with the Supabase service role.
+CREATE POLICY "Service role can create proposals" ON proposals
+    FOR INSERT TO service_role WITH CHECK (true);
 
-CREATE POLICY "Only admins can update proposals" ON proposals
-    FOR UPDATE USING (true); -- Will check admin status in the app
+CREATE POLICY "Service role can update proposals" ON proposals
+    FOR UPDATE TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "Service role can delete proposals" ON proposals
+    FOR DELETE TO service_role USING (true);
 
 -- Create policies for votes
 CREATE POLICY "Users can view their own votes" ON votes
     FOR SELECT USING (true);
 
-CREATE POLICY "Users can create votes" ON votes
-    FOR INSERT WITH CHECK (true); -- Will check Eko ownership in the app
+-- Votes must go through the signed server API, which verifies wallet signatures
+-- and on-chain Eko ownership before inserting.
+CREATE POLICY "Service role can create votes" ON votes
+    FOR INSERT TO service_role WITH CHECK (true);
+
+CREATE POLICY "Service role can delete votes" ON votes
+    FOR DELETE TO service_role USING (true);
 
 -- Create policies for voting logs
 CREATE POLICY "Anyone can view voting logs" ON voting_logs
     FOR SELECT USING (true);
+
+CREATE POLICY "Service role can create voting logs" ON voting_logs
+    FOR INSERT TO service_role WITH CHECK (true);

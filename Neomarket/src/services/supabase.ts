@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { discordWebhook } from './discordWebhook';
+import { API_BASE_URL } from '../config/constants';
 
 // Initialize Supabase client
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -46,6 +47,116 @@ export interface VotingLog {
   created_at: string;
 }
 
+interface VotingSigningAccount {
+  address?: string;
+  signMessage?: (args: { message: string } | string) => Promise<string>;
+}
+
+type VotingAction = 'createProposal' | 'submitVote' | 'deleteProposal';
+
+interface SignedApiResponse<T> {
+  data?: T;
+  error?: string;
+}
+
+async function requestSignedVotingAction<T>(
+  endpoint: 'proposals' | 'votes',
+  action: VotingAction,
+  payload: Record<string, unknown>,
+  account: VotingSigningAccount
+): Promise<T> {
+  if (!account?.address || !account.signMessage) {
+    throw new Error('Please connect a wallet that supports message signing.');
+  }
+
+  const timestamp = String(Date.now());
+  const nonce = crypto.randomUUID();
+  const payloadHash = await hashPayload(payload);
+  const walletAddress = account.address.toLowerCase();
+  const message = buildVotingMessage({
+    action,
+    walletAddress,
+    nonce,
+    timestamp,
+    payloadHash
+  });
+
+  let signature: string;
+  try {
+    signature = await account.signMessage({ message });
+  } catch {
+    signature = await account.signMessage(message);
+  }
+
+  const response = await fetch(`${API_BASE_URL}/voting/${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action,
+      walletAddress,
+      payload,
+      nonce,
+      timestamp,
+      signature
+    })
+  });
+
+  const result = await response.json() as SignedApiResponse<T>;
+
+  if (!response.ok || result.error || !result.data) {
+    throw new Error(result.error || 'Voting request failed.');
+  }
+
+  return result.data;
+}
+
+function buildVotingMessage({
+  action,
+  walletAddress,
+  nonce,
+  timestamp,
+  payloadHash
+}: {
+  action: VotingAction;
+  walletAddress: string;
+  nonce: string;
+  timestamp: string;
+  payloadHash: string;
+}) {
+  return [
+    'NeoMarket Voting API',
+    `Action: ${action}`,
+    `Wallet: ${walletAddress}`,
+    `Nonce: ${nonce}`,
+    `Timestamp: ${timestamp}`,
+    `Payload Hash: ${payloadHash}`
+  ].join('\n');
+}
+
+async function hashPayload(payload: Record<string, unknown>) {
+  const data = new TextEncoder().encode(stableStringify(payload));
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value);
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(',')}]`;
+  }
+
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+    .join(',')}}`;
+}
+
 // Voting Service
 export const votingService = {
   // Fetch all proposals by category and status
@@ -84,17 +195,11 @@ export const votingService = {
   },
 
   // Create a new proposal (admin only)
-  async createProposal(proposal: Omit<Proposal, 'id' | 'created_at' | 'updated_at' | 'votes_for' | 'votes_against' | 'status'>) {
-    const { data, error } = await supabase
-      .from('proposals')
-      .insert([proposal])
-      .select()
-      .single();
-    
-    if (error) throw error;
-
-    // Log the proposal creation
-    await this.logAction(data.id, proposal.created_by, 'created_proposal', { title: proposal.title });
+  async createProposal(
+    proposal: Omit<Proposal, 'id' | 'created_at' | 'updated_at' | 'votes_for' | 'votes_against' | 'status'>,
+    account: VotingSigningAccount
+  ) {
+    const data = await requestSignedVotingAction<Proposal>('proposals', 'createProposal', proposal as unknown as Record<string, unknown>, account);
 
     // Send Discord notification (non-blocking)
     try {
@@ -126,24 +231,18 @@ export const votingService = {
   },
 
   // Submit a vote
-  async submitVote(proposalId: string, walletAddress: string, voteType: VoteType) {
+  async submitVote(proposalId: string, walletAddress: string, voteType: VoteType, account: VotingSigningAccount) {
     // Check if already voted
     const hasVoted = await this.hasVoted(proposalId, walletAddress);
     if (hasVoted) {
       throw new Error('You have already voted on this proposal');
     }
 
-    const { data, error } = await supabase
-      .from('votes')
-      .insert([{
-        proposal_id: proposalId,
-        wallet_address: walletAddress,
-        vote_type: voteType
-      }])
-      .select()
-      .single();
-    
-    if (error) throw error;
+    const data = await requestSignedVotingAction<Vote>('votes', 'submitVote', {
+      proposalId,
+      walletAddress,
+      voteType
+    }, account);
 
     // Send Discord notification (non-blocking)
     try {
@@ -193,17 +292,8 @@ export const votingService = {
   },
 
   // Log an action
-  async logAction(proposalId: string | null, walletAddress: string, action: string, details?: any) {
-    const { error } = await supabase
-      .from('voting_logs')
-      .insert([{
-        proposal_id: proposalId,
-        wallet_address: walletAddress,
-        action,
-        details
-      }]);
-    
-    if (error) throw error;
+  async logAction(_proposalId: string | null, _walletAddress: string, _action: string, _details?: any) {
+    throw new Error('Voting logs are written by the signed voting API.');
   },
 
   // Get logs for a proposal
@@ -245,18 +335,10 @@ export const votingService = {
   },
 
   // Delete a proposal (admin only)
-  async deleteProposal(proposalId: string, adminWallet: string) {
-    const { error } = await supabase
-      .from('proposals')
-      .delete()
-      .eq('id', proposalId);
-    
-    if (error) throw error;
-
-    // Log the deletion (proposal_id will be set to NULL due to foreign key constraint)
-    await this.logAction(null, adminWallet, 'deleted_proposal', { 
-      deleted_proposal_id: proposalId,
-      deleted_at: new Date().toISOString() 
-    });
+  async deleteProposal(proposalId: string, adminWallet: string, account: VotingSigningAccount) {
+    await requestSignedVotingAction<{ id: string }>('proposals', 'deleteProposal', {
+      proposalId,
+      adminWallet
+    }, account);
   }
 };

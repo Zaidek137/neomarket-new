@@ -11,8 +11,6 @@ import SuccessStep from './SuccessStep';
 import ErrorStep from './ErrorStep';
 import { createWallet } from "thirdweb/wallets";
 
-const THIRDWEB_CLIENT_ID = "dc56b7276133338ec60eebc93d1c38b1";
-
 type BuyModalProps = {
   listing: any;
   metadata: any;
@@ -77,7 +75,7 @@ const BuyModal: React.FC<BuyModalProps> = ({ listing, metadata, onClose, client,
       }));
 
       setCheckoutState(prev => ({ ...prev, onrampSession }));
-      window.open(onrampSession.link, "_blank");
+      window.open(onrampSession.link, "_blank", "noopener,noreferrer");
       monitorOnrampAndBuy(onrampSession.id);
 
     } catch (error) {
@@ -257,4 +255,4 @@ const BuyModal: React.FC<BuyModalProps> = ({ listing, metadata, onClose, client,
   );
 };
 
-export default BuyModal; 
+export default BuyModal;

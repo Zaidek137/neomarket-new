@@ -1,9 +1,6 @@
 {
   "dependencies": {
-    "@thirdweb-dev/react": "^4.9.4",
-    "@vercel/analytics": "^1.5.0",
-    "@vercel/speed-insights": "^1.2.0",
-    "react-hot-toast": "^2.5.2",
-    "react-youtube": "^10.1.0"
+    "@thirdweb-dev/vault-sdk": "^0.1.1",
+    "dotenv": "^16.6.1"
   }
 }

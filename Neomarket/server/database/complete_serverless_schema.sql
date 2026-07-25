@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS exchange_logs (
     user_wallet_address TEXT NOT NULL,
     collection_address TEXT NOT NULL,
     token_id TEXT NOT NULL,
-    reward_id TEXT NOT NULL,
+    reward_id TEXT NULL,
     usdt_amount DECIMAL(10,2) NULL, -- Amount of USDT to be sent (for display/manual processing)
     reward_type TEXT NOT NULL,
     custom_reward_data JSONB NULL,
@@ -102,11 +102,41 @@ ORDER BY
 -- ========================================
 -- 4. ROW LEVEL SECURITY (RLS) SETUP
 -- ========================================
--- Disable RLS for now to avoid permission issues
--- You can enable and configure RLS later if needed for multi-tenant setup
+-- Writes are handled by signed serverless API routes that use the Supabase service role.
 
-ALTER TABLE burn_rewards DISABLE ROW LEVEL SECURITY;
-ALTER TABLE exchange_logs DISABLE ROW LEVEL SECURITY;
+ALTER TABLE burn_rewards ENABLE ROW LEVEL SECURITY;
+ALTER TABLE exchange_logs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS burn_rewards_public_read ON burn_rewards;
+DROP POLICY IF EXISTS burn_rewards_service_role_all ON burn_rewards;
+DROP POLICY IF EXISTS exchange_logs_service_role_all ON exchange_logs;
+
+CREATE POLICY burn_rewards_public_read
+  ON burn_rewards
+  FOR SELECT
+  TO anon, authenticated
+  USING (true);
+
+CREATE POLICY burn_rewards_service_role_all
+  ON burn_rewards
+  FOR ALL
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
+
+CREATE POLICY exchange_logs_service_role_all
+  ON exchange_logs
+  FOR ALL
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
+
+REVOKE INSERT, UPDATE, DELETE ON burn_rewards FROM anon, authenticated;
+REVOKE SELECT, INSERT, UPDATE, DELETE ON exchange_logs FROM anon, authenticated;
+GRANT SELECT ON burn_rewards TO anon, authenticated;
+GRANT ALL ON burn_rewards TO service_role;
+GRANT ALL ON exchange_logs TO service_role;
+GRANT SELECT ON pending_exchanges_view TO service_role;
 
 -- ========================================
 -- 5. SAMPLE DATA (OPTIONAL)

@@ -1,8 +1,4 @@
--- Execute this SQL in your Supabase SQL Editor to add delete permissions for proposals
-
--- Add delete policy for proposals (admins can delete)
-CREATE POLICY "Allow delete access to proposals" ON proposals
-    FOR DELETE USING (true); -- Admin check is done in the app
-
--- Grant delete permissions to authenticated users
-GRANT DELETE ON proposals TO authenticated;
+-- Token-governed proposal deletion is retired with the rest of the governance
+-- feature. Keep this former helper safe if an operator runs it again.
+DROP POLICY IF EXISTS "Allow delete access to proposals" ON public.proposals;
+REVOKE DELETE ON public.proposals FROM anon, authenticated;

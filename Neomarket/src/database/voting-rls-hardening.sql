@@ -10,15 +10,21 @@ ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS image_url TEXT;
 
 DROP POLICY IF EXISTS "Only admins can create proposals" ON public.proposals;
 DROP POLICY IF EXISTS "Only admins can update proposals" ON public.proposals;
+DROP POLICY IF EXISTS "Allow insert access to proposals" ON public.proposals;
+DROP POLICY IF EXISTS "Allow update access to proposals" ON public.proposals;
+DROP POLICY IF EXISTS "Allow delete access to proposals" ON public.proposals;
 DROP POLICY IF EXISTS "Service role can create proposals" ON public.proposals;
 DROP POLICY IF EXISTS "Service role can update proposals" ON public.proposals;
 DROP POLICY IF EXISTS "Service role can delete proposals" ON public.proposals;
 
 DROP POLICY IF EXISTS "Users can create votes" ON public.votes;
+DROP POLICY IF EXISTS "Allow insert access to votes" ON public.votes;
+DROP POLICY IF EXISTS "Allow update access to votes" ON public.votes;
 DROP POLICY IF EXISTS "Service role can create votes" ON public.votes;
 DROP POLICY IF EXISTS "Service role can delete votes" ON public.votes;
 
 DROP POLICY IF EXISTS "Service role can create voting logs" ON public.voting_logs;
+DROP POLICY IF EXISTS "Allow insert access to voting_logs" ON public.voting_logs;
 
 CREATE POLICY "Service role can create proposals" ON public.proposals
     FOR INSERT TO service_role WITH CHECK (true);

@@ -12,7 +12,7 @@ This will create:
 - Row Level Security (RLS) policies
 - `pending_exchanges_view` for signed admin review
 
-For an existing exchange database, run `database/exchange-rls-hardening.sql` after backing up the project. This removes direct anonymous browser writes and requires reward management and exchange processing to go through the signed `/api/exchange/rewards` endpoint.
+For an existing database, run `database/retire-blockchain-features.sql` after backing up the project. NFT exchanges and token governance are retired; the migration removes all browser and service-role access to those legacy tables.
 
 ### 2. Verify Database Setup
 
